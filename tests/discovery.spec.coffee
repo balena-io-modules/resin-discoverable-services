@@ -86,11 +86,6 @@ describe 'Discoverable Services:', ->
 
 	describe '.enumerateServices()', ->
 
-		describe 'using an invalid callback parameter', ->
-
-			it '.enumerateServices() should throw an error', ->
-				expect(-> discoverableServices.enumerateServices('spoon')).to.throw('callback parameter must be a function')
-
 		describe 'using the test services registry path', ->
 
 			it 'should return the registered services in a callback', (done) ->
@@ -117,15 +112,15 @@ describe 'Discoverable Services:', ->
 			bonjourInstance.unpublishAll()
 			bonjourInstance.destroy()
 
-		describe 'using an invalid callback parameter', ->
+		describe 'using invalid parameters', ->
 			it '.enumerateServices() should throw an error with an service list', ->
-				expect(-> discoverableServices.findServices('spoon')).to.throw('services parameter must be an array of service name strings')
+				promise = discoverableServices.findServices('spoon')
+				expect(promise).to.eventually.be.rejectedWith(Error, 'services parameter must be an array of service name strings')
 
 			it '.enumerateServices() should throw an error with an invalid timeout', ->
-				expect(-> discoverableServices.findServices([], 'spoon')).to.throw('timeout parameter must be a number value in milliseconds')
+				promise = discoverableServices.findServices([], 'spoon')
+				expect(promise).to.eventually.be.rejectedWith(Error, 'timeout parameter must be a number value in milliseconds')
 
-			it '.enumerateServices() should throw an error with an invalid callback', ->
-				expect(-> discoverableServices.findServices([], 100, 'spoon')).to.throw('callback parameter must be a function')
 		describe 'using a set of published services', ->
 			this.timeout(10000)
 			findService = (services, idName) ->

@@ -34,7 +34,7 @@ retrieveServices = ->
 	scanDirectory = (parentPath, localPath) ->
 		# Scan for directory names,
 		foundDirectories = []
-		return fs.readdirAsync(parentPath)
+		fs.readdirAsync(parentPath)
 		.then (paths) ->
 			Promise.map paths, (path) ->
 				fs.statAsync("#{parentPath}/#{path}")
@@ -42,7 +42,7 @@ retrieveServices = ->
 					if stat.isDirectory()
 						foundDirectories.push(path)
 		.then ->
-			if foundDirectories.length == 0
+			if foundDirectories.length is 0
 				foundPaths.push(localPath)
 			else
 				# Prepend our path onto it
@@ -65,7 +65,7 @@ retrieveServices = ->
 			if (components.length >= 2 or components.length <= 3)
 				service = ''
 				tags = []
-				if components.length == 3
+				if components.length is 3
 					service = "_#{components[0]}._sub."
 					components.shift()
 				service += "_#{components[0]}._#{components[1]}"
@@ -73,13 +73,13 @@ retrieveServices = ->
 				fs.readFileAsync("#{registryPath}#{path}/tags.json", { encoding: 'utf8' })
 				.then (data) ->
 					json = JSON.parse(data)
-					if (!_.isArray(json))
+					if (not _.isArray(json))
 						throw new Error()
 
 					tags = json
 				.catch (err) ->
 					# If the tag file didn't exist, we silently fail.
-					if (err.code != 'ENOENT')
+					if err.code isnt 'ENOENT'
 						throw new Error("tags.json for #{service} service defintion is incorrect")
 				.then ->
 					services.push({ service: service, tags: tags })
@@ -104,10 +104,10 @@ services = _.memoize(retrieveServices)
 # discoverableServices.setRegistryPath("/home/heds/discoverable_services")
 ###
 exports.setRegistryPath = (path) ->
-	if !path?
+	if not path?
 		path = "#{__dirname}/../services"
 
-	if !_.isString(path)
+	if not _.isString(path)
 		throw new Error('path parameter must be a path string')
 
 	registryPath = path
@@ -130,9 +130,6 @@ exports.setRegistryPath = (path) ->
 #   console.log(services)
 ###
 exports.enumerateServices = (callback) ->
-	if callback? and !_.isFunction(callback)
-		throw new Error('callback parameter must be a function')
-
 	services()
 	.asCallback(callback)
 
@@ -155,31 +152,27 @@ exports.enumerateServices = (callback) ->
 #   # services is an array of every service that conformed to the specified search parameters
 #   console.log(services)
 ###
-exports.findServices = (services, timeout, callback) ->
+exports.findServices = Promise.method (services, timeout, callback) ->
 	# Check parameters.
-	if !timeout?
+	if not timeout?
 		timeout = 2000
 	else
-		if !_.isNumber(timeout)
+		if not _.isNumber(timeout)
 			throw new Error('timeout parameter must be a number value in milliseconds')
 
-	if !_.isArray(services)
+	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
-
-	if callback? and !_.isFunction(callback)
-		throw new Error('callback parameter must be a function')
 
 	# Perform the bonjour service lookup and return any results after the timeout period
 	bonjourInstance = bonjour()
 	createBrowser = (serviceName, subtypes, type, protocol) ->
-		return new Promise (resolve) ->
+		new Promise (resolve) ->
 			foundServices = []
-			browser = bonjourInstance.find { type: type, subtypes: subtypes, protocol: protocol },
-				(service) ->
-					# Because we spin up a new search for each subtype, we don't
-					# need to update records here. Any valid service is unique.
-					service.service = serviceName
-					foundServices.push(service)
+			browser = bonjourInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
+				# Because we spin up a new search for each subtype, we don't
+				# need to update records here. Any valid service is unique.
+				service.service = serviceName
+				foundServices.push(service)
 
 			setTimeout( ->
 				browser.stop()
@@ -188,13 +181,11 @@ exports.findServices = (services, timeout, callback) ->
 
 	# Find only registered services
 	findValidService = (serviceName, knownServices) ->
-		return _.find knownServices, (service) ->
-			if service.service == serviceName
+		_.find knownServices, (service) ->
+			if service.service is serviceName
 				return true
 			else
 				return (_.indexOf(service.tags, serviceName) != -1)
-
-			return false
 
 	# Get the list of registered services.
 	retrieveServices()
@@ -203,7 +194,7 @@ exports.findServices = (services, timeout, callback) ->
 		services.forEach (service) ->
 			if (registeredService = findValidService(service, validServices))?
 				types = registeredService.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/)
-				if types[1] == undefined and types[2] == undefined
+				if types[1] is undefined and types[2] is undefined
 					subtypes = []
 				else
 					subtypes = [ types[2] ]

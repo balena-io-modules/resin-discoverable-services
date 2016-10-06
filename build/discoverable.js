@@ -147,9 +147,6 @@ exports.setRegistryPath = function(path) {
  */
 
 exports.enumerateServices = function(callback) {
-  if ((callback != null) && !_.isFunction(callback)) {
-    throw new Error('callback parameter must be a function');
-  }
   return services().asCallback(callback);
 };
 
@@ -174,7 +171,7 @@ exports.enumerateServices = function(callback) {
  *   console.log(services)
  */
 
-exports.findServices = function(services, timeout, callback) {
+exports.findServices = Promise.method(function(services, timeout, callback) {
   var bonjourInstance, createBrowser, findValidService;
   if (timeout == null) {
     timeout = 2000;
@@ -185,9 +182,6 @@ exports.findServices = function(services, timeout, callback) {
   }
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service name strings');
-  }
-  if ((callback != null) && !_.isFunction(callback)) {
-    throw new Error('callback parameter must be a function');
   }
   bonjourInstance = bonjour();
   createBrowser = function(serviceName, subtypes, type, protocol) {
@@ -215,7 +209,6 @@ exports.findServices = function(services, timeout, callback) {
       } else {
         return _.indexOf(service.tags, serviceName) !== -1;
       }
-      return false;
     });
   };
   return retrieveServices().then(function(validServices) {
@@ -247,4 +240,4 @@ exports.findServices = function(services, timeout, callback) {
   })["finally"](function() {
     return bonjourInstance.destroy();
   }).asCallback(callback);
-};
+});

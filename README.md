@@ -44,6 +44,8 @@ Returns the list of currently registered service definitions. Service definition
 
     `{ service: `[_<subtype>._sub]._<type>._protocol`, tags: [ [tagNames] ] }`
 
+**Notice** Should a callback not be provided, then the method will return a resolvable Promise.
+
 Only registered services returned by the `enumerateServices()` method may be used to find services on the local network.
 
 Should a callback not be provided, then the method will return a resolvable Promise.
@@ -52,9 +54,9 @@ Should a callback not be provided, then the method will return a resolvable Prom
 
 Searches for any occurrences of the specified services on the local network. Services are passed in the standard service form, or as a tag associated with that service.
 
-The timeout value is the length of time in milliseconds that the module will search for before returning any results. If no value is passed, it defaults to 2000ms.
+**Notice** Should a callback not be provided, then the method will return a resolvable Promise.
 
-Should a callback not be provided, then the method will return a resolvable Promise.
+The timeout value is the length of time in milliseconds that the module will search for before returning any results. If no value is passed, it defaults to 2000ms.
 
 The method returns an array of services that conform to those registered. Each service information object consists of:
 
