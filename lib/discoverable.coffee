@@ -16,7 +16,7 @@ limitations under the License.
 
 Promise = require('bluebird')
 fs = Promise.promisifyAll(require('fs'))
-bonjour = require('bonjour')()
+bonjour = require('bonjour')
 _ = require('lodash')
 
 # Set the memoize cache as a Map so we can clear it should the service
@@ -156,11 +156,25 @@ exports.enumerateServices = (callback) ->
 #   console.log(services)
 ###
 exports.findServices = (services, timeout, callback) ->
+	# Check parameters.
+	if !timeout?
+		timeout = 2000
+	else
+		if !_.isNumber(timeout)
+			throw new Error('timeout parameter must be a number value in milliseconds')
+
+	if !_.isArray(services)
+		throw new Error('services parameter must be an array of service name strings')
+
+	if callback? and !_.isFunction(callback)
+		throw new Error('callback parameter must be a function')
+
 	# Perform the bonjour service lookup and return any results after the timeout period
+	bonjourInstance = bonjour()
 	createBrowser = (serviceName, subtypes, type, protocol) ->
 		return new Promise (resolve) ->
 			foundServices = []
-			browser = bonjour.find { type: type, subtypes: subtypes, protocol: protocol },
+			browser = bonjourInstance.find { type: type, subtypes: subtypes, protocol: protocol },
 				(service) ->
 					# Because we spin up a new search for each subtype, we don't
 					# need to update records here. Any valid service is unique.
@@ -181,19 +195,6 @@ exports.findServices = (services, timeout, callback) ->
 				return (_.indexOf(service.tags, serviceName) != -1)
 
 			return false
-
-	# Check parameters.
-	if !timeout?
-		timeout = 2000
-	else
-		if !_.isNumber(timeout)
-			throw new Error('timeout parameter must be a number value in milliseconds')
-
-	if !_.isArray(services)
-		throw new Error('services parameter must be an array of service name strings')
-
-	if callback? and !_.isFunction(callback)
-		throw new Error('callback parameter must be a function')
 
 	# Get the list of registered services.
 	retrieveServices()
@@ -220,4 +221,6 @@ exports.findServices = (services, timeout, callback) ->
 			services = _.flatten(services)
 			_.remove(services, (entry) -> entry == null)
 			return services
+	.finally ->
+		bonjourInstance.destroy()
 	.asCallback(callback)

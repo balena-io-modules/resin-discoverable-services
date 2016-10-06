@@ -20,7 +20,7 @@ Promise = require('bluebird');
 
 fs = Promise.promisifyAll(require('fs'));
 
-bonjour = require('bonjour')();
+bonjour = require('bonjour');
 
 _ = require('lodash');
 
@@ -175,12 +175,26 @@ exports.enumerateServices = function(callback) {
  */
 
 exports.findServices = function(services, timeout, callback) {
-  var createBrowser, findValidService;
+  var bonjourInstance, createBrowser, findValidService;
+  if (timeout == null) {
+    timeout = 2000;
+  } else {
+    if (!_.isNumber(timeout)) {
+      throw new Error('timeout parameter must be a number value in milliseconds');
+    }
+  }
+  if (!_.isArray(services)) {
+    throw new Error('services parameter must be an array of service name strings');
+  }
+  if ((callback != null) && !_.isFunction(callback)) {
+    throw new Error('callback parameter must be a function');
+  }
+  bonjourInstance = bonjour();
   createBrowser = function(serviceName, subtypes, type, protocol) {
     return new Promise(function(resolve) {
       var browser, foundServices;
       foundServices = [];
-      browser = bonjour.find({
+      browser = bonjourInstance.find({
         type: type,
         subtypes: subtypes,
         protocol: protocol
@@ -204,19 +218,6 @@ exports.findServices = function(services, timeout, callback) {
       return false;
     });
   };
-  if (timeout == null) {
-    timeout = 2000;
-  } else {
-    if (!_.isNumber(timeout)) {
-      throw new Error('timeout parameter must be a number value in milliseconds');
-    }
-  }
-  if (!_.isArray(services)) {
-    throw new Error('services parameter must be an array of service name strings');
-  }
-  if ((callback != null) && !_.isFunction(callback)) {
-    throw new Error('callback parameter must be a function');
-  }
   return retrieveServices().then(function(validServices) {
     var serviceBrowsers;
     serviceBrowsers = [];
@@ -243,5 +244,7 @@ exports.findServices = function(services, timeout, callback) {
       });
       return services;
     });
+  })["finally"](function() {
+    return bonjourInstance.destroy();
   }).asCallback(callback);
 };

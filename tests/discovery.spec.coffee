@@ -4,7 +4,7 @@ discoverableServices = require('../lib/discoverable')
 mkdirp = Promise.promisify(require('mkdirp'))
 rmdir = Promise.promisify(require('rmdir'))
 fs = Promise.promisifyAll(require('fs'))
-bonjour = require('bonjour')()
+bonjour = require('bonjour')
 _ = require('lodash')
 
 expect = m.chai.expect
@@ -52,7 +52,6 @@ describe 'Discoverable Services:', ->
 			expect(service.service).to.equal(dummyService.service)
 			if dummyService.tags?
 				expect(service.tags).to.deep.equal(dummyService.tags)
-
 
 	describe '.setRegistryPath()', ->
 
@@ -106,18 +105,19 @@ describe 'Discoverable Services:', ->
 				.return (inspectEnumeratedServices)
 
 	describe '.findServices()', ->
+		bonjourInstance = bonjour()
 
 		# Publish our dummy services up, using bonjour.
 		before ->
 			dummyServices.forEach (service) ->
-				bonjour.publish(service.bonjourOpts)
+				bonjourInstance.publish(service.bonjourOpts)
 
 		# Stop the dummy services.
 		after ->
-			bonjour.unpublishAll()
+			bonjourInstance.unpublishAll()
+			bonjourInstance.destroy()
 
 		describe 'using an invalid callback parameter', ->
-
 			it '.enumerateServices() should throw an error with an service list', ->
 				expect(-> discoverableServices.findServices('spoon')).to.throw('services parameter must be an array of service name strings')
 
@@ -126,7 +126,6 @@ describe 'Discoverable Services:', ->
 
 			it '.enumerateServices() should throw an error with an invalid callback', ->
 				expect(-> discoverableServices.findServices([], 100, 'spoon')).to.throw('callback parameter must be a function')
-
 		describe 'using a set of published services', ->
 			this.timeout(10000)
 			findService = (services, idName) ->

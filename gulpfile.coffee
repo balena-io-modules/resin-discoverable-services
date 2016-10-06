@@ -26,4 +26,4 @@ gulp.task 'build', [
 ]
 
 gulp.task 'watch', [ 'build' ], ->
-gulp.watch(OPTIONS.files.coffee, [ 'build' ])
+	gulp.watch(OPTIONS.files.coffee, [ 'build' ])
