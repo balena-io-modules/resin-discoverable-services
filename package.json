@@ -2,7 +2,7 @@
   "name": "resin-discoverable-services",
   "version": "1.0.0",
   "description": "Resin.io local service discovery utilities",
-  "main": "build/register.js",
+  "main": "build/discoverable.js",
   "homepage": "https://github.com/resin-io-modules/resin-discoverable-services",
   "repository": {
     "type": "git",
