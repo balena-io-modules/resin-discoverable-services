@@ -14,15 +14,15 @@ describe 'Discoverable Services:', ->
 	testServicePath = "#{__dirname}/test-services"
 	dummyServices = [
 		{
-			path: "#{__dirname}/test-services/ssh/tcp",
-			service: '_ssh._tcp',
-			bonjourOpts: { name: 'Main SSH', port: 1234, type: 'ssh', protocol: 'tcp' }
+			path: "#{__dirname}/test-services/first/ssh/tcp",
+			service: '_first._sub._ssh._tcp',
+			bonjourOpts: { name: 'First SSH', port: 1234, type: 'ssh', subtypes: [ 'first' ], protocol: 'tcp' }
 		},
 		{
-			path: "#{__dirname}/test-services/private/ssh/tcp",
-			service: '_private._sub._ssh._tcp',
-			tags: [ 'our_private_ssh' ],
-			bonjourOpts: { name: 'Private SSH', port: 2345, type: 'ssh', subtypes: [ 'private' ], protocol: 'tcp' }
+			path: "#{__dirname}/test-services/second/ssh/tcp",
+			service: '_second._sub._ssh._tcp',
+			tags: [ 'second_ssh' ],
+			bonjourOpts: { name: 'Second SSH', port: 2345, type: 'ssh', subtypes: [ 'second' ], protocol: 'tcp' }
 		},
 		{
 			path: "#{__dirname}/test-services/noweb/gopher/udp",
@@ -98,7 +98,6 @@ describe 'Discoverable Services:', ->
 			it 'should return a promise that resolves to the registered services', ->
 				discoverableServices.enumerateServices()
 				.return (inspectEnumeratedServices)
-
 	describe '.findServices()', ->
 		bonjourInstance = bonjour()
 
@@ -106,6 +105,12 @@ describe 'Discoverable Services:', ->
 		before ->
 			dummyServices.forEach (service) ->
 				bonjourInstance.publish(service.bonjourOpts)
+
+			# Publish a new service that isn't in the registry. We should not
+			# expect to see it. In this case, it's an encompassing SSH type.
+			bonjourInstance.publish
+				name: 'Invalid SSH', port: 5678,
+				type: 'ssh', subtypes: [ 'invalid' ], protocol: 'tcp'
 
 		# Stop the dummy services.
 		after ->
@@ -127,52 +132,52 @@ describe 'Discoverable Services:', ->
 				return _.find services, (service) ->
 					return if service.name == idName then true else false
 
-			it 'should return only the gopher and private ssh service using default timeout as a promise', ->
+			it 'should return only the gopher and second ssh service using default timeout as a promise', ->
 				startTime = _.now()
-				discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'our_private_ssh' ])
+				discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'second_ssh' ])
 				.then (services) ->
-					expect(services.length).to.equal(2)
-					_.find services, (service) ->
-						elapsedTime = _.now() - startTime
-						expect(elapsedTime).to.be.above(2000)
-						expect(elapsedTime).to.be.below(7000)
+					expect(services).to.have.length(2)
+					elapsedTime = _.now() - startTime
+					expect(elapsedTime).to.be.above(2000)
+					expect(elapsedTime).to.be.below(3000)
 
-						gopher = findService(services, 'Gopher')
-						expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
-						expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
-						expect(gopher.subtypes).to.deep.equal(['noweb'])
-						expect(gopher.port).to.equal(3456)
-						expect(gopher.protocol).to.equal('udp')
+					gopher = findService(services, 'Gopher')
+					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
+					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
+					expect(gopher.port).to.equal(3456)
+					expect(gopher.protocol).to.equal('udp')
 
-						privateSsh = findService(services, 'Private SSH')
-						expect(privateSsh.service).to.equal('_private._sub._ssh._tcp')
-						expect(privateSsh.fqdn).to.equal('Private SSH._ssh._tcp.local')
-						expect(privateSsh.subtypes).to.deep.equal(['private'])
-						expect(privateSsh.port).to.equal(2345)
-						expect(privateSsh.protocol).to.equal('tcp')
+					privateSsh = findService(services, 'Second SSH')
+					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
+					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
+					expect(privateSsh.port).to.equal(2345)
+					expect(privateSsh.protocol).to.equal('tcp')
 
-			it 'should return both main and private ssh services using default timeout via a callback', ->
+			it 'should return both first and second ssh services using default timeout via a callback', (done) ->
 				startTime = _.now()
-				discoverableServices.findServices [ '_ssh._tcp' ], 6000, (error, services) ->
-					expect(services.length).to.equal(2)
-					_.find services, (service) ->
-						elapsedTime = _.now() - startTime
-						expect(elapsedTime).to.be.above(6000)
-						expect(elapsedTime).to.be.below(7000)
+				discoverableServices.findServices [ '_first._sub._ssh._tcp', 'second_ssh' ], 6000, (error, services) ->
+					expect(services).to.have.length(2)
+					elapsedTime = _.now() - startTime
+					expect(elapsedTime).to.be.above(6000)
+					expect(elapsedTime).to.be.below(7000)
 
-						mainSsh = findService(services, 'Main SSH')
-						expect(mainSsh.service).to.equal('_ssh._tcp')
-						expect(mainSsh.fqdn).to.equal('Main SSH._ssh._tcp.local')
-						expect(mainSsh.subtypes).to.deep.equal([])
-						expect(mainSsh.port).to.equal(1234)
-						expect(mainSsh.protocol).to.equal('tcp')
+					mainSsh = findService(services, 'First SSH')
+					expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
+					expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
+					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
+					expect(mainSsh.port).to.equal(1234)
+					expect(mainSsh.protocol).to.equal('tcp')
 
-						# We didn't explicitly search for the private SSH services
-						# so the subtype is empty and the service is just a vanilla
-						# 'ssh' one.
-						privateSsh = findService(services, 'Private SSH')
-						expect(privateSsh.service).to.equal('_ssh._tcp')
-						expect(privateSsh.fqdn).to.equal('Private SSH._ssh._tcp.local')
-						expect(privateSsh.subtypes).to.deep.equal([])
-						expect(privateSsh.port).to.equal(2345)
-						expect(privateSsh.protocol).to.equal('tcp')
+					# We didn't explicitly search for the private SSH services
+					# so the subtype is empty and the service is just a vanilla
+					# 'ssh' one.
+					privateSsh = findService(services, 'Second SSH')
+					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
+					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
+					expect(privateSsh.port).to.equal(2345)
+					expect(privateSsh.protocol).to.equal('tcp')
+					done()
+				return
