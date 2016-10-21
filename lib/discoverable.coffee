@@ -76,7 +76,7 @@ retrieveServices = ->
 					components.shift()
 				service += "_#{components[0]}._#{components[1]}"
 
-				fs.readFileAsync("#{registryPath}#{path}/tags.json", { encoding: 'utf8' })
+				return fs.readFileAsync("#{registryPath}#{path}/tags.json", { encoding: 'utf8' })
 				.then (data) ->
 					json = JSON.parse(data)
 					if (not _.isArray(json))
@@ -92,7 +92,7 @@ retrieveServices = ->
 		.return(services)
 
 # Set the services function as a memoized one.
-services = _.memoize(retrieveServices)
+registryServices = _.memoize(retrieveServices)
 
 ###
 # @summary Determines if a service is valid.
@@ -150,7 +150,7 @@ exports.setRegistryPath = (path) ->
 		throw new Error('path parameter must be a path string')
 
 	registryPath = path
-	services.cache.clear()
+	registryServices.cache.clear()
 
 ###
 # @summary Enumerates all currently registered services available for discovery.
@@ -169,7 +169,7 @@ exports.setRegistryPath = (path) ->
 #   console.log(services)
 ###
 exports.enumerateServices = (callback) ->
-	services()
+	registryServices()
 	.asCallback(callback)
 
 ###
@@ -219,7 +219,7 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 			, timeout)
 
 	# Get the list of registered services.
-	retrieveServices()
+	registryServices()
 	.then (validServices) ->
 		serviceBrowsers = []
 		services.forEach (service) ->
@@ -264,7 +264,7 @@ exports.publishServices = Promise.method (services, callback) ->
 		throw new Error('services parameter must be an array of service objects')
 
 	# Get the list of registered services.
-	retrieveServices()
+	registryServices()
 	.then (validServices) ->
 		services.forEach (service) ->
 			if service.identifier? and service.name? and (registeredService = findValidService(service.identifier, validServices))?
