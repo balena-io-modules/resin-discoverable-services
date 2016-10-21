@@ -181,3 +181,81 @@ describe 'Discoverable Services:', ->
 					expect(privateSsh.protocol).to.equal('tcp')
 					done()
 				return
+
+	describe '.publishServices()', ->
+		this.timeout(10000)
+
+		describe 'using invalid parameters', ->
+			it '.publishServices() should throw an error with an service list', ->
+				promise = discoverableServices.publishServices('spoon')
+				expect(promise).to.eventually.be.rejectedWith(Error, 'services parameter must be an array of service objects')
+
+		describe 'using test services', ->
+			findService = (services, idName) ->
+				return _.find services, (service) ->
+					return if service.name == idName then true else false
+
+			it 'should publish only the gopher service and find only it', ->
+				discoverableServices.publishServices([ { name: 'Gopher', identifier: '_noweb._sub._gopher._udp', port: 3456 } ])
+				.then ->
+					discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'second_ssh' ])
+				.then (services) ->
+					expect(services).to.have.length(1)
+					gopher = findService(services, 'Gopher')
+					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
+					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
+					expect(gopher.port).to.equal(3456)
+					expect(gopher.protocol).to.equal('udp')
+
+					discoverableServices.unpublishServices()
+
+			it 'should publish only the gopher service and find only it', ->
+				discoverableServices.publishServices([ { name: 'Gopher', identifier: '_noweb._sub._gopher._udp', host: 'gopher.local', port: 3456 } ])
+				.then ->
+					discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'second_ssh' ])
+				.then (services) ->
+					expect(services).to.have.length(1)
+					gopher = findService(services, 'Gopher')
+					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
+					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
+					expect(gopher.port).to.equal(3456)
+					expect(gopher.host).to.equal('gopher.local')
+					expect(gopher.protocol).to.equal('udp')
+
+					discoverableServices.unpublishServices()
+
+			it 'should publish all services and find them', ->
+				discoverableServices.publishServices [
+					{ identifier: '_first._sub._ssh._tcp', name: 'First SSH' , port: 1234 }
+					{ identifier: 'second_ssh', name: 'Second SSH' , port: 2345 }
+					{ identifier: '_noweb._sub._gopher._udp', name: 'Gopher', port: 3456 }
+
+				]
+				discoverableServices.findServices([ '_first._sub._ssh._tcp', '_noweb._sub._gopher._udp', 'second_ssh' ])
+				.then (services) ->
+					expect(services).to.have.length(3)
+
+					gopher = findService(services, 'Gopher')
+					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
+					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
+					expect(gopher.port).to.equal(3456)
+					expect(gopher.protocol).to.equal('udp')
+
+					mainSsh = findService(services, 'First SSH')
+					expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
+					expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
+					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
+					expect(mainSsh.port).to.equal(1234)
+					expect(mainSsh.protocol).to.equal('tcp')
+
+					privateSsh = findService(services, 'Second SSH')
+					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
+					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
+					expect(privateSsh.port).to.equal(2345)
+					expect(privateSsh.protocol).to.equal('tcp')
+
+					discoverableServices.unpublishServices()
