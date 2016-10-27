@@ -24,6 +24,12 @@ _ = require('lodash')
 _.memoize.Cache = Map
 registryPath = "#{__dirname}/../services"
 
+# List of published services. The bonjourInstance is initially uncreated, and
+# is created either by the publishing of a service, or by finding a service.
+# It *must* be cleaned up and destroyed before exiting a process to ensure
+# bound sockets are removed.
+publishInstance = null
+
 ###
 # @summary Scans the registry path hierarchy to determine service types.
 # @function
@@ -86,7 +92,37 @@ retrieveServices = ->
 		.return(services)
 
 # Set the services function as a memoized one.
-services = _.memoize(retrieveServices)
+registryServices = _.memoize(retrieveServices)
+
+###
+# @summary Determines if a service is valid.
+# @function
+# @private
+###
+findValidService = (serviceIdentifier, knownServices) ->
+	_.find knownServices, ({ service, tags }) ->
+		serviceIdentifier in [ service, tags... ]
+
+###
+# @summary Retrieves information for a given services string.
+# @function
+# @private
+###
+determineServiceInfo = (service) ->
+	info = {}
+
+	types = service.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/)
+	if not types[1]? and not types[2]?
+		info.subtypes = []
+	else
+		info.subtypes = [ types[2] ]
+
+	# We only try and find a service if the type is valid
+	if types[3]? and types[4]?
+		info.type = types[3]
+		info.protocol = types[4]
+
+	return info
 
 ###
 # @summary Sets the path which will be examined for service definitions.
@@ -111,7 +147,7 @@ exports.setRegistryPath = (path) ->
 		throw new Error('path parameter must be a path string')
 
 	registryPath = path
-	services.cache.clear()
+	registryServices.cache.clear()
 
 ###
 # @summary Enumerates all currently registered services available for discovery.
@@ -130,7 +166,7 @@ exports.setRegistryPath = (path) ->
 #   console.log(services)
 ###
 exports.enumerateServices = (callback) ->
-	services()
+	registryServices()
 	.asCallback(callback)
 
 ###
@@ -142,7 +178,7 @@ exports.enumerateServices = (callback) ->
 # This function allows promise style if the callback is omitted. Should the timeout value be missing
 # then a default timeout of 2000ms is used.
 #
-# @param {Array} services - A string array of service names or tags
+# @param {Array} services - A string array of service identifiers or tags
 # @param {Number} timeout - A timeout in milliseconds before results are returned. Defaults to 2000ms
 # @param {Function} callback - callback (error, services)
 #
@@ -164,14 +200,14 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 		throw new Error('services parameter must be an array of service name strings')
 
 	# Perform the bonjour service lookup and return any results after the timeout period
-	bonjourInstance = bonjour()
-	createBrowser = (serviceName, subtypes, type, protocol) ->
+	findInstance = bonjour()
+	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
 		new Promise (resolve) ->
 			foundServices = []
-			browser = bonjourInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
+			browser = findInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
 				# Because we spin up a new search for each subtype, we don't
 				# need to update records here. Any valid service is unique.
-				service.service = serviceName
+				service.service = serviceIdentifier
 				foundServices.push(service)
 
 			setTimeout( ->
@@ -179,33 +215,19 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 				resolve(foundServices)
 			, timeout)
 
-	# Find only registered services
-	findValidService = (serviceName, knownServices) ->
-		_.find knownServices, (service) ->
-			if service.service is serviceName
-				return true
-			else
-				return (_.indexOf(service.tags, serviceName) != -1)
-
 	# Get the list of registered services.
-	retrieveServices()
+	registryServices()
 	.then (validServices) ->
 		serviceBrowsers = []
 		services.forEach (service) ->
 			if (registeredService = findValidService(service, validServices))?
-				types = registeredService.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/)
-				if types[1] is undefined and types[2] is undefined
-					subtypes = []
-				else
-					subtypes = [ types[2] ]
-
-				# We only try and find a service if the type is valid
-				if types[3]? and types[4]?
-					type = types[3]
-					protocol = types[4]
+				serviceDetails = determineServiceInfo(registeredService)
+				if serviceDetails.type? and serviceDetails.protocol?
 					# Build a browser, set a timeout and resolve once that
 					# timeout has finished
-					serviceBrowsers.push(createBrowser(registeredService.service, subtypes, type, protocol))
+					serviceBrowsers.push(createBrowser	registeredService.service,
+						serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol
+					)
 
 		Promise.all serviceBrowsers
 		.then (services) ->
@@ -213,5 +235,69 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 			_.remove(services, (entry) -> entry == null)
 			return services
 	.finally ->
-		bonjourInstance.destroy()
+		findInstance.destroy()
 	.asCallback(callback)
+
+###
+# @summary Publishes all available services
+# @function
+# @public
+#
+# @description
+# This function allows promise style if the callback is omitted.
+# Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
+#
+# @param {Array} services - An object array of service details. Each service object is comprised of:
+#				- identifier - A string of the service identifier or an associated tag
+#				- name - A string of the service name or an associated tag
+#				- host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
+#				- port - The port on which the service will be advertised
+#
+# @example
+# discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
+###
+exports.publishServices = Promise.method (services, callback) ->
+	if not _.isArray(services)
+		throw new Error('services parameter must be an array of service objects')
+
+	# Get the list of registered services.
+	registryServices()
+	.then (validServices) ->
+		services.forEach (service) ->
+			if service.identifier? and service.name? and (registeredService = findValidService(service.identifier, validServices))?
+				serviceDetails = determineServiceInfo(registeredService)
+				if serviceDetails.type? and serviceDetails.protocol? and service.port?
+					if !publishInstance?
+						publishInstance = bonjour()
+
+					publishDetails =
+						name: service.name
+						port: service.port
+						type: serviceDetails.type
+						subtypes: serviceDetails.subtypes
+						protocol: serviceDetails.protocol
+					if service.host? then publishDetails.host = service.host
+
+					publishInstance.publish(publishDetails)
+					publishedServices = true
+	.asCallback(callback)
+
+###
+# @summary Unpublishes all available services
+# @function
+# @public
+#
+# @description
+# This function allows promise style if the callback is omitted.
+# This function must be called before process exit to ensure used sockets are destroyed.
+#
+# @example
+# discoverableServices.unpublishServices()
+###
+exports.unpublishServices = (callback) ->
+	return Promise.resolve().asCallback(callback) if not publishInstance?
+
+	publishInstance.unpublishAll ->
+		publishInstance.destroy()
+		publishInstance = null
+		return Promise.resolve().asCallback(callback)

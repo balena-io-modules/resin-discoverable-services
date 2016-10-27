@@ -14,7 +14,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var Promise, _, bonjour, fs, registryPath, retrieveServices, services;
+var Promise, _, bonjour, determineServiceInfo, findValidService, fs, publishInstance, registryPath, registryServices, retrieveServices,
+  indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+  slice = [].slice;
 
 Promise = require('bluebird');
 
@@ -27,6 +29,8 @@ _ = require('lodash');
 _.memoize.Cache = Map;
 
 registryPath = __dirname + "/../services";
+
+publishInstance = null;
 
 
 /*
@@ -98,7 +102,45 @@ retrieveServices = function() {
   });
 };
 
-services = _.memoize(retrieveServices);
+registryServices = _.memoize(retrieveServices);
+
+
+/*
+ * @summary Determines if a service is valid.
+ * @function
+ * @private
+ */
+
+findValidService = function(serviceIdentifier, knownServices) {
+  return _.find(knownServices, function(arg) {
+    var service, tags;
+    service = arg.service, tags = arg.tags;
+    return indexOf.call([service].concat(slice.call(tags)), serviceIdentifier) >= 0;
+  });
+};
+
+
+/*
+ * @summary Retrieves information for a given services string.
+ * @function
+ * @private
+ */
+
+determineServiceInfo = function(service) {
+  var info, types;
+  info = {};
+  types = service.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/);
+  if ((types[1] == null) && (types[2] == null)) {
+    info.subtypes = [];
+  } else {
+    info.subtypes = [types[2]];
+  }
+  if ((types[3] != null) && (types[4] != null)) {
+    info.type = types[3];
+    info.protocol = types[4];
+  }
+  return info;
+};
 
 
 /*
@@ -125,7 +167,7 @@ exports.setRegistryPath = function(path) {
     throw new Error('path parameter must be a path string');
   }
   registryPath = path;
-  return services.cache.clear();
+  return registryServices.cache.clear();
 };
 
 
@@ -147,7 +189,7 @@ exports.setRegistryPath = function(path) {
  */
 
 exports.enumerateServices = function(callback) {
-  return services().asCallback(callback);
+  return registryServices().asCallback(callback);
 };
 
 
@@ -160,7 +202,7 @@ exports.enumerateServices = function(callback) {
  * This function allows promise style if the callback is omitted. Should the timeout value be missing
  * then a default timeout of 2000ms is used.
  *
- * @param {Array} services - A string array of service names or tags
+ * @param {Array} services - A string array of service identifiers or tags
  * @param {Number} timeout - A timeout in milliseconds before results are returned. Defaults to 2000ms
  * @param {Function} callback - callback (error, services)
  *
@@ -172,7 +214,7 @@ exports.enumerateServices = function(callback) {
  */
 
 exports.findServices = Promise.method(function(services, timeout, callback) {
-  var bonjourInstance, createBrowser, findValidService;
+  var createBrowser, findInstance;
   if (timeout == null) {
     timeout = 2000;
   } else {
@@ -183,17 +225,17 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service name strings');
   }
-  bonjourInstance = bonjour();
-  createBrowser = function(serviceName, subtypes, type, protocol) {
+  findInstance = bonjour();
+  createBrowser = function(serviceIdentifier, subtypes, type, protocol) {
     return new Promise(function(resolve) {
       var browser, foundServices;
       foundServices = [];
-      browser = bonjourInstance.find({
+      browser = findInstance.find({
         type: type,
         subtypes: subtypes,
         protocol: protocol
       }, function(service) {
-        service.service = serviceName;
+        service.service = serviceIdentifier;
         return foundServices.push(service);
       });
       return setTimeout(function() {
@@ -202,31 +244,15 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
       }, timeout);
     });
   };
-  findValidService = function(serviceName, knownServices) {
-    return _.find(knownServices, function(service) {
-      if (service.service === serviceName) {
-        return true;
-      } else {
-        return _.indexOf(service.tags, serviceName) !== -1;
-      }
-    });
-  };
-  return retrieveServices().then(function(validServices) {
+  return registryServices().then(function(validServices) {
     var serviceBrowsers;
     serviceBrowsers = [];
     services.forEach(function(service) {
-      var protocol, registeredService, subtypes, type, types;
+      var registeredService, serviceDetails;
       if ((registeredService = findValidService(service, validServices)) != null) {
-        types = registeredService.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/);
-        if (types[1] === void 0 && types[2] === void 0) {
-          subtypes = [];
-        } else {
-          subtypes = [types[2]];
-        }
-        if ((types[3] != null) && (types[4] != null)) {
-          type = types[3];
-          protocol = types[4];
-          return serviceBrowsers.push(createBrowser(registeredService.service, subtypes, type, protocol));
+        serviceDetails = determineServiceInfo(registeredService);
+        if ((serviceDetails.type != null) && (serviceDetails.protocol != null)) {
+          return serviceBrowsers.push(createBrowser(registeredService.service, serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol));
         }
       }
     });
@@ -238,6 +264,82 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
       return services;
     });
   })["finally"](function() {
-    return bonjourInstance.destroy();
+    return findInstance.destroy();
   }).asCallback(callback);
 });
+
+
+/*
+ * @summary Publishes all available services
+ * @function
+ * @public
+ *
+ * @description
+ * This function allows promise style if the callback is omitted.
+ * Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
+ *
+ * @param {Array} services - An object array of service details. Each service object is comprised of:
+ *				- identifier - A string of the service identifier or an associated tag
+ *				- name - A string of the service name or an associated tag
+ *				- host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
+ *				- port - The port on which the service will be advertised
+ *
+ * @example
+ * discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
+ */
+
+exports.publishServices = Promise.method(function(services, callback) {
+  if (!_.isArray(services)) {
+    throw new Error('services parameter must be an array of service objects');
+  }
+  return registryServices().then(function(validServices) {
+    return services.forEach(function(service) {
+      var publishDetails, publishedServices, registeredService, serviceDetails;
+      if ((service.identifier != null) && (service.name != null) && ((registeredService = findValidService(service.identifier, validServices)) != null)) {
+        serviceDetails = determineServiceInfo(registeredService);
+        if ((serviceDetails.type != null) && (serviceDetails.protocol != null) && (service.port != null)) {
+          if (publishInstance == null) {
+            publishInstance = bonjour();
+          }
+          publishDetails = {
+            name: service.name,
+            port: service.port,
+            type: serviceDetails.type,
+            subtypes: serviceDetails.subtypes,
+            protocol: serviceDetails.protocol
+          };
+          if (service.host != null) {
+            publishDetails.host = service.host;
+          }
+          publishInstance.publish(publishDetails);
+          return publishedServices = true;
+        }
+      }
+    });
+  }).asCallback(callback);
+});
+
+
+/*
+ * @summary Unpublishes all available services
+ * @function
+ * @public
+ *
+ * @description
+ * This function allows promise style if the callback is omitted.
+ * This function must be called before process exit to ensure used sockets are destroyed.
+ *
+ * @example
+ * discoverableServices.unpublishServices()
+ */
+
+exports.unpublishServices = function(callback) {
+  if (publishInstance == null) {
+    return Promise.resolve().asCallback(callback);
+  }
+  return publishInstance.unpublishAll(function() {
+    publishInstance.destroy();
+    publishInstance = null;
+    return Promise.resolve().asCallback(callback);
+  });
+};

@@ -75,6 +75,26 @@ The method returns an array of services that conform to those registered. Each s
     - `String family`: IP family that the referer used (IPv4 or IPv6).
     - `Number port`: The port on which the referer runs.
 
+#### publishServices(services, [callback(error, services)])
+
+Publishes any valid service to the network. If a call to this method is made then a corresponding call to `unpublishServices()` **must** be made before process exit to ensure any existing network sockets are finalised.
+
+**Notice** Should a callback not be provided, then the method will return a resolvable Promise.
+
+`services` is an array of objects, each of which contains:
+
+* `String identifier`: The standard service form of the service to publish, or a tag associated with that service.
+* `String name`: The name under which to publish the service, (eg. `Resin SSH`).
+* `Number port`: The port number to advertise the service as running on.
+* `String host`: An optional host name to publish the service as running on. This is useful for proxying.
+
+
+#### unpublishServices([callback])
+
+Unpublishes all services currently published to the network. This method **must** be called prior to process exit should any calls to `publishServices()` have been made.
+
+**Notice** Should a callback not be provided, then the method will return a resolvable Promise.
+
 Support
 -------
 
