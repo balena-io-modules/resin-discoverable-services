@@ -76,7 +76,7 @@ retrieveServices = ->
 					components.shift()
 				service += "_#{components[0]}._#{components[1]}"
 
-				return fs.readFileAsync("#{registryPath}#{path}/tags.json", { encoding: 'utf8' })
+				fs.readFileAsync("#{registryPath}#{path}/tags.json", { encoding: 'utf8' })
 				.then (data) ->
 					json = JSON.parse(data)
 					if (not _.isArray(json))
@@ -100,11 +100,8 @@ registryServices = _.memoize(retrieveServices)
 # @private
 ###
 findValidService = (serviceIdentifier, knownServices) ->
-	_.find knownServices, (service) ->
-		if service.service is serviceIdentifier
-			return true
-		else
-			return (_.indexOf(service.tags, serviceIdentifier) != -1)
+	_.find knownServices, ({ service, tags }) ->
+		serviceIdentifier in [ service, tags... ]
 
 ###
 # @summary Retrieves information for a given services string.
@@ -115,7 +112,7 @@ determineServiceInfo = (service) ->
 	info = {}
 
 	types = service.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/)
-	if types[1] is undefined and types[2] is undefined
+	if not types[1]? and not types[2]?
 		info.subtypes = []
 	else
 		info.subtypes = [ types[2] ]
@@ -298,7 +295,7 @@ exports.publishServices = Promise.method (services, callback) ->
 # discoverableServices.unpublishServices()
 ###
 exports.unpublishServices = (callback) ->
-	if !publishInstance? then return Promise.resolve().asCallback(callback)
+	return Promise.resolve().asCallback(callback) if not publishInstance?
 
 	publishInstance.unpublishAll ->
 		publishInstance.destroy()

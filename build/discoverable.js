@@ -14,7 +14,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var Promise, _, bonjour, determineServiceInfo, findValidService, fs, publishInstance, registryPath, retrieveServices, services;
+var Promise, _, bonjour, determineServiceInfo, findValidService, fs, publishInstance, registryPath, registryServices, retrieveServices,
+  indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+  slice = [].slice;
 
 Promise = require('bluebird');
 
@@ -100,7 +102,7 @@ retrieveServices = function() {
   });
 };
 
-services = _.memoize(retrieveServices);
+registryServices = _.memoize(retrieveServices);
 
 
 /*
@@ -110,12 +112,10 @@ services = _.memoize(retrieveServices);
  */
 
 findValidService = function(serviceIdentifier, knownServices) {
-  return _.find(knownServices, function(service) {
-    if (service.service === serviceIdentifier) {
-      return true;
-    } else {
-      return _.indexOf(service.tags, serviceIdentifier) !== -1;
-    }
+  return _.find(knownServices, function(arg) {
+    var service, tags;
+    service = arg.service, tags = arg.tags;
+    return indexOf.call([service].concat(slice.call(tags)), serviceIdentifier) >= 0;
   });
 };
 
@@ -130,7 +130,7 @@ determineServiceInfo = function(service) {
   var info, types;
   info = {};
   types = service.service.match(/^(_(.*)\._sub\.)?_(.*)\._(.*)$/);
-  if (types[1] === void 0 && types[2] === void 0) {
+  if ((types[1] == null) && (types[2] == null)) {
     info.subtypes = [];
   } else {
     info.subtypes = [types[2]];
@@ -167,7 +167,7 @@ exports.setRegistryPath = function(path) {
     throw new Error('path parameter must be a path string');
   }
   registryPath = path;
-  return services.cache.clear();
+  return registryServices.cache.clear();
 };
 
 
@@ -189,7 +189,7 @@ exports.setRegistryPath = function(path) {
  */
 
 exports.enumerateServices = function(callback) {
-  return services().asCallback(callback);
+  return registryServices().asCallback(callback);
 };
 
 
@@ -244,7 +244,7 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
       }, timeout);
     });
   };
-  return retrieveServices().then(function(validServices) {
+  return registryServices().then(function(validServices) {
     var serviceBrowsers;
     serviceBrowsers = [];
     services.forEach(function(service) {
@@ -292,7 +292,7 @@ exports.publishServices = Promise.method(function(services, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service objects');
   }
-  return retrieveServices().then(function(validServices) {
+  return registryServices().then(function(validServices) {
     return services.forEach(function(service) {
       var publishDetails, publishedServices, registeredService, serviceDetails;
       if ((service.identifier != null) && (service.name != null) && ((registeredService = findValidService(service.identifier, validServices)) != null)) {
