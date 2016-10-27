@@ -1,3 +1,7 @@
+# 1.0.3
+
+* Adds ability to publish and unpublish services.
+
 # 1.0.2
 
 * Fixes test to ensure that it cannot be affected by other services running on the local network.
