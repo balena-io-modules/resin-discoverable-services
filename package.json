@@ -42,6 +42,6 @@
   },
   "dependencies": {
     "bluebird": "^3.0.0",
-    "bonjour": "git+https://github.com/resin-io/bonjour.git"
+    "bonjour": "git+https://github.com/resin-io/bonjour.git#proxy-addresses"
   }
 }
