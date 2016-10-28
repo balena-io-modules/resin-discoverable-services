@@ -87,6 +87,9 @@ Publishes any valid service to the network. If a call to this method is made the
 * `String name`: The name under which to publish the service, (eg. `Resin SSH`).
 * `Number port`: The port number to advertise the service as running on.
 * `String host`: An optional host name to publish the service as running on. This is useful for proxying.
+* `Object addresses`: An object with two optional properties:
+    - `ipv4: Array[String]`: An array of addresses in IPv4 dot-decimal notation.
+    - `ipv6: Array[String]`: An array of addresses in IPv6 hexadecimal notation.
 
 `options` is an object allowing publishing options to be passed:
 

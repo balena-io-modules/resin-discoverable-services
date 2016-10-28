@@ -217,7 +217,7 @@ exports.enumerateServices = (callback) ->
 # @param {Function} callback - callback (error, services)
 #
 # @example
-# discoverableServices.findServices([ '_resin-device._sub._ssh._tcp' ], 5000, (error, services) ->
+# discoverableServices.findServices [ '_resin-device._sub._ssh._tcp' ], 5000, (error, services) ->
 #	throw error if error?
 #   # services is an array of every service that conformed to the specified search parameters
 #   console.log(services)
@@ -289,10 +289,16 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 # @param {Number} services.port - The port on which the service will be advertised
 # @param {Object} options - An options object for passing publishing options:
 # @param {String} options.mdnsInterface - The IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
-
+# @param {Array} addresses - Optional, and defaults to all host interfaces if not given. Othewise, an object with optional properties:
+# @param {Array} addresses.ipv4 - An array of addresses in IPv4 dot-decimal notation.
+# @param {Array} addresses.ipv6 - An array of addresses in IPv6 hexadecimal notation.
+# @param {Function} callback - callback (error, services)
 #
 # @example
-# discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
+# discoverableServices.publishServices [ { identifier: '_resin-device._sub._ssh._tcp', name: 'Resin SSH', host: 'server1.local', port: 9999 } ], (error) ->
+#	throw error if error?
+#   # services is an array of service identifiers from the passed in list that were published (in the same format as passed)
+#   console.log(services)
 ###
 exports.publishServices = Promise.method (services, options, callback) ->
 	if not _.isArray(services)
@@ -310,6 +316,7 @@ exports.publishServices = Promise.method (services, options, callback) ->
 	# Get the list of registered services.
 	registryServices()
 	.then (validServices) ->
+		publishedList = []
 		services.forEach (service) ->
 			if service.identifier? and service.name? and (registeredService = findValidService(service.identifier, validServices))?
 				serviceDetails = determineServiceInfo(registeredService)
@@ -328,10 +335,14 @@ exports.publishServices = Promise.method (services, options, callback) ->
 						type: serviceDetails.type
 						subtypes: serviceDetails.subtypes
 						protocol: serviceDetails.protocol
+						addresses: service.addresses
 					if service.host? then publishDetails.host = service.host
 
 					publishInstance.publish(publishDetails)
 					publishedServices = true
+					publishedList.push(service.identifier)
+
+		return publishedList
 	.asCallback(callback)
 
 ###
