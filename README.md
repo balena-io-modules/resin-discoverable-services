@@ -25,7 +25,7 @@ $ npm install --save resin-discoverable-services
 API
 -------------
 
-This module exports three methods:
+This module exports five methods:
 
 #### setRegistryPath(path)
 

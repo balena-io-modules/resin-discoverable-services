@@ -248,13 +248,13 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 # Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
 #
 # @param {Array} services - An object array of service details. Each service object is comprised of:
-#				- identifier - A string of the service identifier or an associated tag
-#				- name - A string of the service name to advertise as
-#				- host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
-#				- port - The port on which the service will be advertised
-#               - addresses - Optional, and defaults to all host interfaces if not given. Othewise, an object with optional properties:
-#				    {Array} ipv4 - An array of addresses in IPv4 dot-decimal notation.
-#				    {Array} ipv6 - An array of addresses in IPv6 hexadecimal notation.
+# @param {String} services.identifier - A string of the service identifier or an associated tag
+# @param {String} services.name - A string of the service name to advertise as
+# @param {String} services.host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
+# @param {Number} services.port - The port on which the service will be advertised
+# @param {Array} services.addresses - Optional, and defaults to all host interfaces if not given. Othewise, an object with optional properties:
+# @param {Array} services.addresses.ipv4 - An array of addresses in IPv4 dot-decimal notation, each as a string.
+# @param {Array} services.addresses.ipv6 - An array of addresses in IPv6 hexadecimal notation, each as a string.
 # @param {Function} callback - callback (error, services)
 #
 # @example
