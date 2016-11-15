@@ -132,11 +132,8 @@ determineServiceInfo = (service) ->
 ###
 hasValidInterfaces = ->
 	# We can continue so long as we have one interface, and that interface is not loopback.
-	interfaces = _.keys(os.networkInterfaces())
-	if interfaces.length is 0 or (interfaces.length is 1 and interfaces[0] is 'lo')
-		return false
-
-	true
+	_.some os.networkInterfaces(), (value) ->
+		_.some(value, internal: false)
 
 ###
 # @summary Sets the path which will be examined for service definitions.

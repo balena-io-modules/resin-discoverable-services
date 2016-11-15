@@ -152,12 +152,11 @@ determineServiceInfo = function(service) {
  */
 
 hasValidInterfaces = function() {
-  var interfaces;
-  interfaces = _.keys(os.networkInterfaces());
-  if (interfaces.length === 0 || (interfaces.length === 1 && interfaces[0] === 'lo')) {
-    return false;
-  }
-  return true;
+  return _.some(os.networkInterfaces(), function(value) {
+    return _.some(value, {
+      internal: false
+    });
+  });
 };
 
 
