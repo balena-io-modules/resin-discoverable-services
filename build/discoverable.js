@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var Promise, _, bonjour, determineServiceInfo, findValidInterfaces, findValidService, fs, os, publishInstance, registryPath, registryServices, retrieveServices,
+var Promise, _, bonjour, determineServiceInfo, findValidService, fs, hasValidInterfaces, os, publishInstance, registryPath, registryServices, retrieveServices,
   indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
   slice = [].slice;
 
@@ -151,7 +151,7 @@ determineServiceInfo = function(service) {
  * @private
  */
 
-findValidInterfaces = function() {
+hasValidInterfaces = function() {
   var interfaces;
   interfaces = _.keys(os.networkInterfaces());
   if (interfaces.length === 0 || (interfaces.length === 1 && interfaces[0] === 'lo')) {
@@ -243,7 +243,7 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service name strings');
   }
-  if (!findValidInterfaces()) {
+  if (!hasValidInterfaces()) {
     throw new Error('At least one non-loopback interface must be present to bind to');
   }
   findInstance = bonjour();
@@ -313,7 +313,7 @@ exports.publishServices = Promise.method(function(services, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service objects');
   }
-  if (!findValidInterfaces()) {
+  if (!hasValidInterfaces()) {
     throw new Error('At least one non-loopback interface must be present to bind to');
   }
   return registryServices().then(function(validServices) {

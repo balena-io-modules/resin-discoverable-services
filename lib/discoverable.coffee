@@ -130,7 +130,7 @@ determineServiceInfo = (service) ->
 # @function
 # @private
 ###
-findValidInterfaces = ->
+hasValidInterfaces = ->
 	# We can continue so long as we have one interface, and that interface is not loopback.
 	interfaces = _.keys(os.networkInterfaces())
 	if interfaces.length is 0 or (interfaces.length is 1 and interfaces[0] is 'lo')
@@ -213,7 +213,7 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
-	if not findValidInterfaces()
+	if not hasValidInterfaces()
 		throw new Error('At least one non-loopback interface must be present to bind to')
 
 	# Perform the bonjour service lookup and return any results after the timeout period
@@ -277,7 +277,7 @@ exports.publishServices = Promise.method (services, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service objects')
 
-	if not findValidInterfaces()
+	if not hasValidInterfaces()
 		throw new Error('At least one non-loopback interface must be present to bind to')
 
 	# Get the list of registered services.
