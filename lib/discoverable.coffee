@@ -16,6 +16,7 @@ limitations under the License.
 
 Promise = require('bluebird')
 fs = Promise.promisifyAll(require('fs'))
+os = require('os')
 bonjour = require('bonjour')
 _ = require('lodash')
 
@@ -125,6 +126,19 @@ determineServiceInfo = (service) ->
 	return info
 
 ###
+# @summary Ensures valid network interfaces exist
+# @function
+# @private
+###
+findValidInterfaces = ->
+	# We can continue so long as we have one interface, and that interface is not loopback.
+	interfaces = _.keys(os.networkInterfaces())
+	if interfaces.length is 0 or (interfaces.length is 1 and interfaces[0] is 'lo')
+		return false
+
+	true
+
+###
 # @summary Sets the path which will be examined for service definitions.
 # @function
 # @public
@@ -199,6 +213,9 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
+	if not findValidInterfaces()
+		throw new Error('At least one non-loopback interface must be present to bind to')
+
 	# Perform the bonjour service lookup and return any results after the timeout period
 	findInstance = bonjour()
 	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
@@ -248,10 +265,10 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 # Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
 #
 # @param {Array} services - An object array of service details. Each service object is comprised of:
-#				- identifier - A string of the service identifier or an associated tag
-#				- name - A string of the service name or an associated tag
-#				- host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
-#				- port - The port on which the service will be advertised
+# @param {String} services.identifier - A string of the service identifier or an associated tag
+# @param {String} services.name - A string of the service name to advertise as
+# @param {String} services.host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
+# @param {Number} services.port - The port on which the service will be advertised
 #
 # @example
 # discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
@@ -259,6 +276,9 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 exports.publishServices = Promise.method (services, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service objects')
+
+	if not findValidInterfaces()
+		throw new Error('At least one non-loopback interface must be present to bind to')
 
 	# Get the list of registered services.
 	registryServices()
