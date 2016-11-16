@@ -14,13 +14,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var Promise, _, bonjour, determineServiceInfo, findValidService, fs, publishInstance, registryPath, registryServices, retrieveServices,
+var Promise, _, bonjour, determineServiceInfo, findValidService, fs, hasValidInterfaces, os, publishInstance, registryPath, registryServices, retrieveServices,
   indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
   slice = [].slice;
 
 Promise = require('bluebird');
 
 fs = Promise.promisifyAll(require('fs'));
+
+os = require('os');
 
 bonjour = require('bonjour');
 
@@ -144,6 +146,21 @@ determineServiceInfo = function(service) {
 
 
 /*
+ * @summary Ensures valid network interfaces exist
+ * @function
+ * @private
+ */
+
+hasValidInterfaces = function() {
+  return _.some(os.networkInterfaces(), function(value) {
+    return _.some(value, {
+      internal: false
+    });
+  });
+};
+
+
+/*
  * @summary Sets the path which will be examined for service definitions.
  * @function
  * @public
@@ -225,6 +242,9 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service name strings');
   }
+  if (!hasValidInterfaces()) {
+    throw new Error('At least one non-loopback interface must be present to bind to');
+  }
   findInstance = bonjour();
   createBrowser = function(serviceIdentifier, subtypes, type, protocol) {
     return new Promise(function(resolve) {
@@ -279,10 +299,10 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
  * Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
  *
  * @param {Array} services - An object array of service details. Each service object is comprised of:
- *				- identifier - A string of the service identifier or an associated tag
- *				- name - A string of the service name or an associated tag
- *				- host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
- *				- port - The port on which the service will be advertised
+ * @param {String} services.identifier - A string of the service identifier or an associated tag
+ * @param {String} services.name - A string of the service name to advertise as
+ * @param {String} services.host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
+ * @param {Number} services.port - The port on which the service will be advertised
  *
  * @example
  * discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
@@ -291,6 +311,9 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
 exports.publishServices = Promise.method(function(services, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service objects');
+  }
+  if (!hasValidInterfaces()) {
+    throw new Error('At least one non-loopback interface must be present to bind to');
   }
   return registryServices().then(function(validServices) {
     return services.forEach(function(service) {
