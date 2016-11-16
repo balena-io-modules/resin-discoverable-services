@@ -16,6 +16,7 @@ limitations under the License.
 
 Promise = require('bluebird')
 fs = Promise.promisifyAll(require('fs'))
+os = require('os')
 bonjour = require('bonjour')
 _ = require('lodash')
 
@@ -125,6 +126,16 @@ determineServiceInfo = (service) ->
 	return info
 
 ###
+# @summary Ensures valid network interfaces exist
+# @function
+# @private
+###
+hasValidInterfaces = ->
+	# We can continue so long as we have one interface, and that interface is not loopback.
+	_.some os.networkInterfaces(), (value) ->
+		_.some(value, internal: false)
+
+###
 # @summary Sets the path which will be examined for service definitions.
 # @function
 # @public
@@ -199,6 +210,9 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
+	if not hasValidInterfaces()
+		throw new Error('At least one non-loopback interface must be present to bind to')
+
 	# Perform the bonjour service lookup and return any results after the timeout period
 	findInstance = bonjour()
 	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
@@ -266,6 +280,9 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 exports.publishServices = Promise.method (services, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service objects')
+
+	if not hasValidInterfaces()
+		throw new Error('At least one non-loopback interface must be present to bind to')
 
 	# Get the list of registered services.
 	registryServices()

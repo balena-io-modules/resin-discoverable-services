@@ -1,3 +1,7 @@
+# 1.0.4
+
+* Adds check to ensure that valid network interfaces exist before finding/publishing services.
+
 # 1.0.3
 
 * Adds ability to publish and unpublish services.
