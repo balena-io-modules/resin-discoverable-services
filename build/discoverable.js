@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-var Promise, _, bonjour, determineServiceInfo, findValidService, fs, hasValidInterfaces, os, publishInstance, registryPath, registryServices, retrieveServices,
+var Promise, _, bonjour, determineServiceInfo, findValidService, fs, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
   indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
   slice = [].slice;
 
@@ -23,6 +23,8 @@ Promise = require('bluebird');
 fs = Promise.promisifyAll(require('fs'));
 
 os = require('os');
+
+ip = require('ip');
 
 bonjour = require('bonjour');
 
@@ -161,6 +163,36 @@ hasValidInterfaces = function() {
 
 
 /*
+ * @summary Determine if a specified interface address for MDNS binding is a loopback interface
+ * @function
+ * @private
+ */
+
+isLoopbackInterface = function(address) {
+  var family, foundIntf, ref, validFamily;
+  if (ip.isV4Format(address)) {
+    family = 'IPv4';
+  } else if (ip.isV6Format(address)) {
+    family = 'IPv6';
+  } else {
+    return null;
+  }
+  foundIntf = _.find(os.networkInterfaces(), function(intfInfo) {
+    return _.find(intfInfo, {
+      address: address
+    });
+  });
+  if ((foundIntf == null) || ((validFamily = (ref = _.find(foundIntf, {
+    family: family
+  })) != null ? ref.internal : void 0) == null)) {
+    return null;
+  } else {
+    return validFamily;
+  }
+};
+
+
+/*
  * @summary Sets the path which will be examined for service definitions.
  * @function
  * @public
@@ -242,9 +274,6 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service name strings');
   }
-  if (!hasValidInterfaces()) {
-    throw new Error('At least one non-loopback interface must be present to bind to');
-  }
   findInstance = bonjour();
   createBrowser = function(serviceIdentifier, subtypes, type, protocol) {
     return new Promise(function(resolve) {
@@ -297,32 +326,48 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
  * @description
  * This function allows promise style if the callback is omitted.
  * Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
+ * Should an `mdnsInterface` property be set in the `services` object and pertain to a loopback device, then loopback for multicast will automatically be enabled.
  *
  * @param {Array} services - An object array of service details. Each service object is comprised of:
  * @param {String} services.identifier - A string of the service identifier or an associated tag
  * @param {String} services.name - A string of the service name to advertise as
  * @param {String} services.host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
  * @param {Number} services.port - The port on which the service will be advertised
+ * @param {Object} services - An object detailing options to the publish method
+ * @param {Object} options - An options object for passing publishing options:
+ * @param {String} options.mdnsInterface - The IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
+
  *
  * @example
  * discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
  */
 
-exports.publishServices = Promise.method(function(services, callback) {
+exports.publishServices = Promise.method(function(services, options, callback) {
+  var loopbackInterface;
   if (!_.isArray(services)) {
     throw new Error('services parameter must be an array of service objects');
   }
-  if (!hasValidInterfaces()) {
+  if (((options != null ? options.mdnsInterface : void 0) == null) && !hasValidInterfaces()) {
     throw new Error('At least one non-loopback interface must be present to bind to');
+  } else if ((options != null ? options.mdnsInterface : void 0) != null) {
+    loopbackInterface = isLoopbackInterface(options.mdnsInterface);
+    if (loopbackInterface == null) {
+      throw new Error('The specified MDNS interface address is not valid');
+    }
   }
   return registryServices().then(function(validServices) {
     return services.forEach(function(service) {
-      var publishDetails, publishedServices, registeredService, serviceDetails;
+      var bonjourOpts, publishDetails, publishedServices, registeredService, serviceDetails;
       if ((service.identifier != null) && (service.name != null) && ((registeredService = findValidService(service.identifier, validServices)) != null)) {
         serviceDetails = determineServiceInfo(registeredService);
         if ((serviceDetails.type != null) && (serviceDetails.protocol != null) && (service.port != null)) {
           if (publishInstance == null) {
-            publishInstance = bonjour();
+            bonjourOpts = {};
+            if ((options != null ? options.mdnsInterface : void 0) != null) {
+              bonjourOpts["interface"] = options.mdnsInterface;
+              bonjourOpts.loopback = loopbackInterface;
+            }
+            publishInstance = bonjour(bonjourOpts);
           }
           publishDetails = {
             name: service.name,

@@ -17,6 +17,7 @@ limitations under the License.
 Promise = require('bluebird')
 fs = Promise.promisifyAll(require('fs'))
 os = require('os')
+ip = require('ip')
 bonjour = require('bonjour')
 _ = require('lodash')
 
@@ -136,6 +137,25 @@ hasValidInterfaces = ->
 		_.some(value, internal: false)
 
 ###
+# @summary Determine if a specified interface address for MDNS binding is a loopback interface
+# @function
+# @private
+###
+isLoopbackInterface = (address) ->
+	if ip.isV4Format(address)
+		family = 'IPv4'
+	else if ip.isV6Format(address)
+		family = 'IPv6'
+	else
+		return null
+
+	# Correctly format any IPv6 addresses so we find them.
+	foundIntf = _.find os.networkInterfaces(), (intfInfo) ->
+		_.find intfInfo, address: address
+
+	if not foundIntf? or  not (validFamily = _.find(foundIntf, family: family)?.internal)? then return null else return validFamily
+
+###
 # @summary Sets the path which will be examined for service definitions.
 # @function
 # @public
@@ -210,9 +230,6 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
-	if not hasValidInterfaces()
-		throw new Error('At least one non-loopback interface must be present to bind to')
-
 	# Perform the bonjour service lookup and return any results after the timeout period
 	findInstance = bonjour()
 	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
@@ -260,22 +277,32 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 # @description
 # This function allows promise style if the callback is omitted.
 # Note that it is vital that any published services are unpublished during exit of the process using `unpublishServices()`.
+# Should an `mdnsInterface` property be set in the `services` object and pertain to a loopback device, then loopback for multicast will automatically be enabled.
 #
 # @param {Array} services - An object array of service details. Each service object is comprised of:
 # @param {String} services.identifier - A string of the service identifier or an associated tag
 # @param {String} services.name - A string of the service name to advertise as
 # @param {String} services.host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
 # @param {Number} services.port - The port on which the service will be advertised
+# @param {Object} options - An options object for passing publishing options:
+# @param {String} options.mdnsInterface - The IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
+
 #
 # @example
 # discoverableServices.publishServices([ { service: '_resin-device._sub._ssh._tcp', host: 'server1.local', port: 9999 } ])
 ###
-exports.publishServices = Promise.method (services, callback) ->
+exports.publishServices = Promise.method (services, options, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service objects')
 
-	if not hasValidInterfaces()
+	# If we have a specific interface to bind multicast to, we need to determine if loopback
+	# should be set (if we can't find the address, we bail)
+	if not options?.mdnsInterface? and not hasValidInterfaces()
 		throw new Error('At least one non-loopback interface must be present to bind to')
+	else if options?.mdnsInterface?
+		loopbackInterface = isLoopbackInterface(options.mdnsInterface)
+		if not loopbackInterface?
+			throw new Error('The specified MDNS interface address is not valid')
 
 	# Get the list of registered services.
 	registryServices()
@@ -285,7 +312,12 @@ exports.publishServices = Promise.method (services, callback) ->
 				serviceDetails = determineServiceInfo(registeredService)
 				if serviceDetails.type? and serviceDetails.protocol? and service.port?
 					if !publishInstance?
-						publishInstance = bonjour()
+						bonjourOpts = {}
+						if options?.mdnsInterface?
+							bonjourOpts.interface = options.mdnsInterface
+							bonjourOpts.loopback = loopbackInterface
+
+						publishInstance = bonjour(bonjourOpts)
 
 					publishDetails =
 						name: service.name

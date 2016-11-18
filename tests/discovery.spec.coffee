@@ -207,7 +207,7 @@ describe 'Discoverable Services:', ->
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.protocol).to.equal('udp')
-
+				.finally ->
 					discoverableServices.unpublishServices()
 
 			it 'should publish only the gopher service and find only it', ->
@@ -233,7 +233,8 @@ describe 'Discoverable Services:', ->
 					{ identifier: '_noweb._sub._gopher._udp', name: 'Gopher', port: 3456 }
 
 				]
-				discoverableServices.findServices([ '_first._sub._ssh._tcp', '_noweb._sub._gopher._udp', 'second_ssh' ])
+				.then ->
+					discoverableServices.findServices([ '_first._sub._ssh._tcp', '_noweb._sub._gopher._udp', 'second_ssh' ])
 				.then (services) ->
 					expect(services).to.have.length(3)
 
@@ -257,5 +258,27 @@ describe 'Discoverable Services:', ->
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
 					expect(privateSsh.protocol).to.equal('tcp')
-
+				.finally ->
 					discoverableServices.unpublishServices()
+
+			it 'should publish single service only to local IPv4 loopback interface', ->
+				# This is a rough check, as by default every Darwin based platform
+				# runs MDNS by default. It is assumed that every other platform (such as
+				# Linux/FreeBSD/Windows) is *not* running a Bonjour based protocol.
+				# If it is, this test will fail as it will not be able to bind to port 5354.
+				if process.platform isnt 'darwin'
+					discoverableServices.publishServices [
+						{ identifier: '_first._sub._ssh._tcp', name: 'First SSH' , port: 1234 }
+					], { mdnsInterface: '127.0.0.1' }
+					.then ->
+						discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
+					.then (services) ->
+						mainSsh = findService(services, 'First SSH')
+						expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
+						expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
+						expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
+						expect(mainSsh.port).to.equal(1234)
+						expect(mainSsh.protocol).to.equal('tcp')
+						expect(mainSsh.referer.address).to.equal('127.0.0.1')
+					.finally ->
+						discoverableServices.unpublishServices()
