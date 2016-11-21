@@ -10,9 +10,12 @@ module.exports = {
   updateVersion: 'npm',
 
   // Determine the type from 'Change-Type:' tag.
-  // An incorrect change type, or no change type, will stop versionist to allow corrections to be made.
+  // Should no explicit change type be made, then patch is assumed.
   getIncrementLevelFromCommit: (commit) => {
-    return commit.footer['Change-Type'].trim();
+    if (commitType = commit.footer['Change-Type']) {
+      return commit.footer['Change-Type'].trim();
+    }
+    return 'patch';
   },
 
   // Determine if an issue number is included from a 'Connects-To' tag.
@@ -33,7 +36,7 @@ module.exports = {
   },
 
   template: [
-    '# V{{version}}',
+    '# v{{version}}',
     '',
     '{{#each commits}}',
     '{{#if this.issue}}',
