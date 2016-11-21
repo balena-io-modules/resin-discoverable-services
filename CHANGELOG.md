@@ -1,7 +1,3 @@
-# 1.0.5
-
-* Adds ability to act as a proxy service publisher for alternative hosts.
-
 # 1.0.4
 
 * Adds check to ensure that valid network interfaces exist before finding/publishing services.
