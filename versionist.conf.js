@@ -12,16 +12,13 @@ module.exports = {
   // Ensures commits which do not up versions are not included.
   // It does mean that commit messages without a relevant footer will not be included in the CHANGELOG.
   includeCommitWhen: (commit) => {
-    if (commit.footer['Change-Type']) {
-      return true;
-    }
-    return false;
+    return !!commit.footer['Change-Type'];
   },
 
   // Determine the type from 'Change-Type:' tag.
   // Should no explicit change type be made, then no changes are assumed.
   getIncrementLevelFromCommit: (commit) => {
-    if (commitType = commit.footer['Change-Type']) {
+    if (commit.footer['Change-Type']) {
       return commit.footer['Change-Type'].trim();
     }
   },
