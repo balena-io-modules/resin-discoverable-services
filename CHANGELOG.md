@@ -1,3 +1,7 @@
+# v1.1.1
+
+* Alter template to that of a more streamlined development workflow. - (https://github.com/resin-io-modules/resin-discoverable-services/issues/19)
+
 # v1.1.0
 
 * Fix issue with version character from 'V' to v and ensure no change type defaults to 'patch'.
