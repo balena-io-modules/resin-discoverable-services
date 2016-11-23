@@ -1,5 +1,4 @@
 module.exports = {
-
   // This setup allows the editing and parsing of footer tags to get version and type information,
   // as well as ensuring tags of the type 'v<major>.<minor>.<patch>' are used.
   // It increments in a semver compatible fashion and allows the updating of NPM package info.
@@ -9,13 +8,19 @@ module.exports = {
   incrementVersion: 'semver',
   updateVersion: 'npm',
 
+  // Only include a commit when there is a footer of 'Change-Type'.
+  // Ensures commits which do not up versions are not included.
+  // It does mean that commit messages without a relevant footer will not be included in the CHANGELOG.
+  includeCommitWhen: (commit) => {
+    return !!commit.footer['Change-Type'];
+  },
+
   // Determine the type from 'Change-Type:' tag.
-  // Should no explicit change type be made, then patch is assumed.
+  // Should no explicit change type be made, then no changes are assumed.
   getIncrementLevelFromCommit: (commit) => {
-    if (commitType = commit.footer['Change-Type']) {
+    if (commit.footer['Change-Type']) {
       return commit.footer['Change-Type'].trim();
     }
-    return 'patch';
   },
 
   // Determine if an issue number is included from a 'Connects-To' tag.
