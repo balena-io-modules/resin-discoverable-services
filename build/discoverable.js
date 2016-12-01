@@ -186,9 +186,8 @@ isLoopbackInterface = function(address) {
     family: family
   })) != null ? ref.internal : void 0) == null)) {
     return null;
-  } else {
-    return validFamily;
   }
+  return validFamily;
 };
 
 
@@ -333,7 +332,6 @@ exports.findServices = Promise.method(function(services, timeout, callback) {
  * @param {String} services.name - A string of the service name to advertise as
  * @param {String} services.host - A specific hostname that will be used as the host (useful for proxying or psuedo-hosting). Defaults to current host name should none be given
  * @param {Number} services.port - The port on which the service will be advertised
- * @param {Object} services - An object detailing options to the publish method
  * @param {Object} options - An options object for passing publishing options:
  * @param {String} options.mdnsInterface - The IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
 
