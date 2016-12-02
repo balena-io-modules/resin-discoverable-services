@@ -153,10 +153,10 @@ isLoopbackInterface = (address) ->
 	foundIntf = _.find os.networkInterfaces(), (intfInfo) ->
 		_.find intfInfo, address: address
 
-	if not foundIntf? or  not (validFamily = _.find(foundIntf, family: family)?.internal)?
+	if not foundIntf? or not (validFamily = _.find(foundIntf, family: family)?.internal)?
 		return null
 
-	validFamily
+	return validFamily
 
 ###
 # @summary Sets the path which will be examined for service definitions.
