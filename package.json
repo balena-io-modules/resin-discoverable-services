@@ -4,6 +4,7 @@
   "description": "Resin.io local service discovery utilities",
   "main": "build/discoverable.js",
   "homepage": "https://github.com/resin-io-modules/resin-discoverable-services",
+  "types": "./lib/declarations.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/resin-io-modules/resin-discoverable-services.git"
