@@ -1,5 +1,7 @@
 declare module "resin-discoverable-services" {
-    export interface publishOptions {
+    type Callback<T> = (error?: Error, result?: T) => void;
+
+    export interface PublishOptions {
         identifier: string;
         name: string;
         host?: string;
@@ -7,7 +9,7 @@ declare module "resin-discoverable-services" {
     }
 
     export function setRegistryPath(path: string): void;
-    export function enumerateServices(callback?: (error: Error, results: [string]) => void): Promise<[string]>;
-    export function findServices(services: [string], timeout?: number, callback?: (error: Error, results: [string]) => void): Promise<[string]>;
-    export function publishServices(services: [publishOptions], callback?: (error: Error) => void): Promise<void>;
+    export function enumerateServices(callback?: Callback<string[]>): Promise<string[]>;
+    export function findServices(services: string[], timeout?: number, callback?: Callback<string[]>): Promise<string[]>;
+    export function publishServices(services: PublishOptions[], callback?: Callback<void>): Promise<void>;
 }
