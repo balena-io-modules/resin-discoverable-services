@@ -151,7 +151,7 @@ isLoopbackInterface = (address) ->
 
 	# Correctly format any IPv6 addresses so we find them.
 	foundIntf = _.find os.networkInterfaces(), (intfInfo) ->
-		_.find intfInfo, address: address
+		_.find(intfInfo, address: address)
 
 	if not foundIntf? or not (validFamily = _.find(foundIntf, family: family)?.internal)?
 		return null

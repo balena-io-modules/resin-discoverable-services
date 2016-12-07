@@ -268,7 +268,7 @@ describe 'Discoverable Services:', ->
 				# If it is, this test will fail as it will not be able to bind to port 5354.
 				if process.platform isnt 'darwin'
 					discoverableServices.publishServices [
-						{ identifier: '_first._sub._ssh._tcp', name: 'First SSH' , port: 1234 }
+						{ identifier: '_first._sub._ssh._tcp', name: 'First SSH', port: 1234 }
 					], { mdnsInterface: '127.0.0.1' }
 					.then ->
 						discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
