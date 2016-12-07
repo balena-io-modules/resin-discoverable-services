@@ -1,3 +1,7 @@
+# v1.1.2
+
+* Add TypeScript declarations to module.
+
 # v1.1.1
 
 * Alter template to that of a more streamlined development workflow. - (https://github.com/resin-io-modules/resin-discoverable-services/issues/19)
