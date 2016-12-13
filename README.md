@@ -75,7 +75,7 @@ The method returns an array of services that conform to those registered. Each s
     - `String family`: IP family that the referer used (IPv4 or IPv6).
     - `Number port`: The port on which the referer runs.
 
-#### publishServices(services, [callback(error, services)])
+#### publishServices(services, [options, [callback(error, services)]])
 
 Publishes any valid service to the network. If a call to this method is made then a corresponding call to `unpublishServices()` **must** be made before process exit to ensure any existing network sockets are finalised.
 
@@ -87,6 +87,10 @@ Publishes any valid service to the network. If a call to this method is made the
 * `String name`: The name under which to publish the service, (eg. `Resin SSH`).
 * `Number port`: The port number to advertise the service as running on.
 * `String host`: An optional host name to publish the service as running on. This is useful for proxying.
+
+`options` is an object allowing publishing options to be passed:
+
+* `String mdnsInterface`: An IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
 
 
 #### unpublishServices([callback])
