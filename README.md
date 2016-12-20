@@ -25,7 +25,7 @@ $ npm install --save resin-discoverable-services
 API
 -------------
 
-This module exports five methods:
+This module exports the following methods:
 
 #### setRegistryPath(path)
 
@@ -91,7 +91,7 @@ Publishes any valid service to the network. If a call to this method is made the
     - `ipv4: Array[String]`: An array of addresses in IPv4 dot-decimal notation.
     - `ipv6: Array[String]`: An array of addresses in IPv6 hexadecimal notation.
 * `options` is an object allowing publishing options to be passed:
-* `String mdnsInterface`: An IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
+    - `String mdnsInterface`: An IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
 
 
 #### unpublishServices([callback])

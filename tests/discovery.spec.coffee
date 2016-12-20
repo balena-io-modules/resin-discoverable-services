@@ -54,14 +54,17 @@ describe 'Discoverable Services:', ->
 			if dummyService.tags?
 				expect(service.tags).to.deep.equal(dummyService.tags)
 
-	inspectPublishedAddresses = (service, hostIPs) ->
+	isPublishedAddresses = (service, hostIPs) ->
 		if hostIPs?
 			ips = hostIPs
 		else
 			interfaces = os.networkInterfaces()
-			ips = []
-			_.forEach _.flatten(_.values(interfaces)), (value) ->
-				ips.push(value.address) if value.internal == false
+			ips = _(interfaces)
+				.values()
+				.flatten()
+				.reject('internal')
+				.map('address')
+				.value()
 
 		_.intersection(ips, service.addresses).length is ips.length
 
@@ -239,7 +242,7 @@ describe 'Discoverable Services:', ->
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.host).to.equal('gopher.local')
 					expect(gopher.protocol).to.equal('udp')
-
+				.finally ->
 					discoverableServices.unpublishServices()
 
 			it 'should publish all services and find them', ->
@@ -320,7 +323,7 @@ describe 'Discoverable Services:', ->
 					expect(mainSsh.port).to.equal(1234)
 					expect(mainSsh.protocol).to.equal('tcp')
 					expect(mainSsh.host).to.equal('testhost.local')
-					expect(inspectPublishedAddresses(mainSsh, [ '1.2.3.4', '2001:db8::1:2' ])).to.equal(true)
+					expect(isPublishedAddresses(mainSsh, [ '1.2.3.4', '2001:db8::1:2' ])).to.equal(true)
 
 					privateSsh = findService(services, 'Second SSH')
 					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
@@ -328,8 +331,8 @@ describe 'Discoverable Services:', ->
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
 					expect(privateSsh.protocol).to.equal('tcp')
-					expect(inspectPublishedAddresses(privateSsh)).to.equal(true)
-
+					expect(isPublishedAddresses(privateSsh)).to.equal(true)
+				.finally ->
 					discoverableServices.unpublishServices()
 
 			it 'should publish a service on a specific set of IP addresses, and another on the host addresses ', ->
@@ -353,7 +356,7 @@ describe 'Discoverable Services:', ->
 					expect(mainSsh.port).to.equal(1234)
 					expect(mainSsh.protocol).to.equal('tcp')
 					expect(mainSsh.host).to.equal('testhost.local')
-					expect(inspectPublishedAddresses(mainSsh, [ '1.2.3.4', '2001:db8::1:2' ])).to.equal(true)
+					expect(isPublishedAddresses(mainSsh, [ '1.2.3.4', '2001:db8::1:2' ])).to.equal(true)
 
 					privateSsh = findService(services, 'Second SSH')
 					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
@@ -361,6 +364,6 @@ describe 'Discoverable Services:', ->
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
 					expect(privateSsh.protocol).to.equal('tcp')
-					expect(inspectPublishedAddresses(privateSsh)).to.equal(true)
-
+					expect(isPublishedAddresses(privateSsh)).to.equal(true)
+				.finally ->
 					discoverableServices.unpublishServices()
