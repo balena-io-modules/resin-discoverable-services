@@ -331,3 +331,36 @@ describe 'Discoverable Services:', ->
 					expect(inspectPublishedAddresses(privateSsh)).to.equal(true)
 
 					discoverableServices.unpublishServices()
+
+			it 'should publish a service on a specific set of IP addresses, and another on the host addresses ', ->
+				discoverableServices.publishServices [
+					{ identifier: '_first._sub._ssh._tcp', name: 'First SSH' , port: 1234, host: 'testhost.local', addresses: { ipv4: [ '1.2.3.4' ], ipv6: [ '2001:db8::1:2' ] } }
+					{ identifier: 'invalid_service', name: 'Invalid', port: 9999 },
+					{ identifier: 'second_ssh', name: 'Second SSH' , port: 2345 }
+				]
+				.then (services) ->
+					expect(services).to.have.length(2)
+					expect(services).to.include('_first._sub._ssh._tcp')
+					expect(services).to.include('second_ssh')
+					discoverableServices.findServices([ '_first._sub._ssh._tcp', '_noweb._sub._gopher._udp', 'second_ssh' ])
+				.then (services) ->
+					expect(services).to.have.length(2)
+
+					mainSsh = findService(services, 'First SSH')
+					expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
+					expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
+					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
+					expect(mainSsh.port).to.equal(1234)
+					expect(mainSsh.protocol).to.equal('tcp')
+					expect(mainSsh.host).to.equal('testhost.local')
+					expect(inspectPublishedAddresses(mainSsh, [ '1.2.3.4', '2001:db8::1:2' ])).to.equal(true)
+
+					privateSsh = findService(services, 'Second SSH')
+					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
+					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
+					expect(privateSsh.port).to.equal(2345)
+					expect(privateSsh.protocol).to.equal('tcp')
+					expect(inspectPublishedAddresses(privateSsh)).to.equal(true)
+
+					discoverableServices.unpublishServices()
