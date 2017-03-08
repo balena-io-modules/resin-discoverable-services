@@ -44,6 +44,7 @@
   "dependencies": {
     "bluebird": "^3.0.0",
     "bonjour": "git+https://github.com/resin-io/bonjour.git",
-    "ip": "^1.1.4"
+    "ip": "^1.1.4",
+    "lodash":"^4.17.4"
   }
 }
