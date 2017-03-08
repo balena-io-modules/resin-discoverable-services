@@ -1,6 +1,6 @@
 {
   "name": "resin-discoverable-services",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Resin.io local service discovery utilities",
   "main": "build/discoverable.js",
   "homepage": "https://github.com/resin-io-modules/resin-discoverable-services",
