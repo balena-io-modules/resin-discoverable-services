@@ -25,7 +25,7 @@ $ npm install --save resin-discoverable-services
 API
 -------------
 
-This module exports three methods:
+This module exports the following methods:
 
 #### setRegistryPath(path)
 
@@ -87,10 +87,11 @@ Publishes any valid service to the network. If a call to this method is made the
 * `String name`: The name under which to publish the service, (eg. `Resin SSH`).
 * `Number port`: The port number to advertise the service as running on.
 * `String host`: An optional host name to publish the service as running on. This is useful for proxying.
-
-`options` is an object allowing publishing options to be passed:
-
-* `String mdnsInterface`: An IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
+* `Object addresses`: An object with two optional properties:
+    - `ipv4: Array[String]`: An array of addresses in IPv4 dot-decimal notation.
+    - `ipv6: Array[String]`: An array of addresses in IPv6 hexadecimal notation.
+* `options` is an object allowing publishing options to be passed:
+    - `String mdnsInterface`: An IPv4 or IPv6 address of a current valid interface with which to bind the MDNS service to (if unset, first available interface).
 
 
 #### unpublishServices([callback])
