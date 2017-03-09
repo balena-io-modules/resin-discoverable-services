@@ -239,21 +239,54 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
-	Promise.using getServiceBrowser(timeout), (serviceBrowser) ->
-		# Get the list of registered services.
-		registryServices()
-		.then (validServices) ->
-			Promise.resolve(services).map (service) ->
-				if (registeredService = findValidService(service, validServices))?
-					serviceDetails = determineServiceInfo(registeredService)
-					if serviceDetails.type? and serviceDetails.protocol?
-						serviceBrowser.find(
-							serviceDetails.type
-							serviceDetails.protocol
-							serviceDetails.subtypes
-						)
-			.filter(_.identity)
-			.then((services) -> _.flatten(services))
+	# Perform the bonjour service lookup and return any results after the timeout period
+	# Do this on all available, valid NICS.
+	nics = os.networkInterfaces()
+	findInstances = []
+	_.each nics, (nic) ->
+		_.each nic, (addr) ->
+			if (addr.family == 'IPv4') and (addr.internal == false)
+				findInstances.push(bonjour({ interface: addr.address }))
+
+	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
+		new Promise (resolve) ->
+			foundServices = []
+			browsers = []
+			_.each findInstances, (findInstance) ->
+				browsers.push findInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
+					# Because we spin up a new search for each subtype, we don't
+					# need to update records here. Any valid service is unique.
+					service.service = serviceIdentifier
+					foundServices.push(service)
+
+			setTimeout( ->
+				_.each browsers, (browser) ->
+					browser.stop()
+				resolve(_.uniqBy(foundServices, (service) -> service.fqdn))
+			, timeout)
+
+	# Get the list of registered services.
+	registryServices()
+	.then (validServices) ->
+		serviceBrowsers = []
+		services.forEach (service) ->
+			if (registeredService = findValidService(service, validServices))?
+				serviceDetails = determineServiceInfo(registeredService)
+				if serviceDetails.type? and serviceDetails.protocol?
+					# Build a browser, set a timeout and resolve once that
+					# timeout has finished
+					serviceBrowsers.push(createBrowser	registeredService.service,
+						serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol
+					)
+
+		Promise.all serviceBrowsers
+		.then (services) ->
+			services = _.flatten(services)
+			_.remove(services, (entry) -> entry == null)
+			return services
+	.finally ->
+		_.each findInstances, (instance) ->
+			instance.destroy()
 	.asCallback(callback)
 
 getServiceBrowser = (timeout) ->
