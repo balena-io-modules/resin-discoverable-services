@@ -234,19 +234,29 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 		throw new Error('services parameter must be an array of service name strings')
 
 	# Perform the bonjour service lookup and return any results after the timeout period
-	findInstance = bonjour()
+	# Do this on all available, valid NICS.
+	nics = os.networkInterfaces()
+	findInstances = []
+	_.each nics, (nic) ->
+		_.each nic, (addr) ->
+			if (addr.family == 'IPv4') and (addr.internal == false)
+				findInstances.push(bonjour({ interface: addr.address }))
+
 	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
 		new Promise (resolve) ->
 			foundServices = []
-			browser = findInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
-				# Because we spin up a new search for each subtype, we don't
-				# need to update records here. Any valid service is unique.
-				service.service = serviceIdentifier
-				foundServices.push(service)
+			browsers = []
+			_.each findInstances, (findInstance) ->
+				browsers.push findInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
+					# Because we spin up a new search for each subtype, we don't
+					# need to update records here. Any valid service is unique.
+					service.service = serviceIdentifier
+					foundServices.push(service)
 
 			setTimeout( ->
-				browser.stop()
-				resolve(foundServices)
+				_.each browsers, (browser) ->
+					browser.stop()
+				resolve(_.uniqBy(foundServices, (service) -> service.fqdn))
 			, timeout)
 
 	# Get the list of registered services.
@@ -269,7 +279,8 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 			_.remove(services, (entry) -> entry == null)
 			return services
 	.finally ->
-		findInstance.destroy()
+		_.each findInstances, (instance) ->
+			instance.destroy()
 	.asCallback(callback)
 
 ###
