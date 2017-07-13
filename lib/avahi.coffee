@@ -1,3 +1,4 @@
+EventEmitter = require('events').EventEmitter
 Promise = require('bluebird')
 dbus = require('dbus-native')
 
@@ -5,6 +6,7 @@ AVAHI_SERVICE_NAME = 'org.freedesktop.Avahi'
 
 IF_UNSPEC = -1
 PROTO_UNSPEC = -1
+SIGNAL_MSG_TYPE = 4
 
 NEW_SIGNAL = 'ItemNew'
 DONE_SIGNAL = 'AllForNow'
@@ -23,39 +25,55 @@ getAvahiServer = (bus) ->
 	Promise.fromCallback (callback) ->
 		service.getInterface('/', 'org.freedesktop.Avahi.Server', callback)
 
-matchSignal = (bus, path, method) ->
-	Promise.fromCallback (callback) ->
-		bus.addMatch("type='signal',path='#{path}',member='#{method}'", callback)
+queryServices = (bus, avahiServer, identifier) ->
+	serviceQueryPath = null
+	unknownMessages = []
 
-onSignal = (bus, serviceBrowser, signal, callback) ->
-	signalFullName = bus.mangle(serviceBrowser.name, 'org.freedesktop.Avahi.ServiceBrowser', signal)
-	bus.signals.on signalFullName, (messageBody) ->
-			callback(messageBody)
+	emitter = new EventEmitter()
+	emitIfRelevant = (msg) ->
+		if msg.path == serviceQueryPath
+			emitter.emit(msg.member, msg.body)
 
-findAvailableServices = (bus, avahiServer, { type, protocol, subtypes }) ->
-	identifier = "_#{type}._#{protocol}"
+	bus.connection.on 'message', (msg) ->
+		# Until we know our query's path, collect messages
+		if not serviceQueryPath?
+			unknownMessages.push(msg)
+		# Once we know our query's path, raise events as relevant
+		else emitIfRelevant(msg)
 
 	Promise.fromCallback (callback) ->
 		avahiServer.ServiceBrowserNew(IF_UNSPEC, PROTO_UNSPEC, identifier, 'local', 0, callback)
-	.then (serviceBrowserPath) ->
-		Promise.fromCallback (callback) ->
-			bus.getObject(AVAHI_SERVICE_NAME, serviceBrowserPath, callback)
-	.then (serviceBrowser) ->
-		Promise.all [NEW_SIGNAL, DONE_SIGNAL, FAIL_SIGNAL].map (signalName) ->
-			matchSignal(bus, serviceBrowser.name, signalName)
-		.then ->
-			new Promise (resolve, reject) ->
-				services = []
-				onSignal bus, serviceBrowser, NEW_SIGNAL, (message) ->
-					console.log('new item:', message)
+	.then (path) ->
+		serviceQueryPath = path
+		# Race condition! Handle any messages that would have matched this, but arrived too early
+		unknownMessages.forEach(emitIfRelevant)
+		unknownMessages = []
+	.return(emitter)
 
-				onSignal bus, serviceBrowser, DONE_SIGNAL, (message) ->
-					console.log('done')
-					resolve(services)
+findAvailableServices = (bus, avahiServer, { type, protocol, subtypes }, timeout = 2000) ->
+	identifier = "_#{type}._#{protocol}"
 
-				onSignal bus, serviceBrowser, FAIL_SIGNAL, (message) ->
-					console.log('error')
-					reject(new Error(message))
+	queryServices(bus, avahiServer, identifier)
+	.then (serviceQuery) ->
+		new Promise (resolve, reject) ->
+			console.log('Listening for services...')
+
+			services = []
+			serviceQuery.on NEW_SIGNAL, (message) ->
+				console.log('new item:', message)
+
+			serviceQuery.on DONE_SIGNAL, (message) ->
+				console.log('done')
+				resolve(services)
+
+			serviceQuery.on FAIL_SIGNAL, (message) ->
+				console.log('error')
+				reject(new Error(message))
+
+			# If we run out of time, just return whatever we have so far
+			setTimeout ->
+				resolve(services)
+			, timeout
 
 ###
 # @summary Detects whether a D-Bus Avahi connection is possible
