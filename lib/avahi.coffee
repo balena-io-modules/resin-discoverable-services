@@ -25,54 +25,57 @@ getAvahiServer = (bus) ->
 	Promise.fromCallback (callback) ->
 		service.getInterface('/', 'org.freedesktop.Avahi.Server', callback)
 
-queryServices = (bus, avahiServer, identifier) ->
-	serviceQueryPath = null
+queryServices = (bus, avahiServer, typeIdentifier) ->
+	serviceBrowserPath = null
 	unknownMessages = []
 
 	emitter = new EventEmitter()
 	emitIfRelevant = (msg) ->
-		if msg.path == serviceQueryPath
+		if msg.path == serviceBrowserPath
 			emitter.emit(msg.member, msg.body)
 
 	bus.connection.on 'message', (msg) ->
 		# Until we know our query's path, collect messages
-		if not serviceQueryPath?
+		if not serviceBrowserPath?
 			unknownMessages.push(msg)
 		# Once we know our query's path, raise events as relevant
 		else emitIfRelevant(msg)
 
 	Promise.fromCallback (callback) ->
-		avahiServer.ServiceBrowserNew(IF_UNSPEC, PROTO_UNSPEC, identifier, 'local', 0, callback)
+		avahiServer.ServiceBrowserNew(IF_UNSPEC, PROTO_UNSPEC, typeIdentifier, 'local', 0, callback)
 	.then (path) ->
-		serviceQueryPath = path
+		serviceBrowserPath = path
 		# Race condition! Handle any messages that would have matched this, but arrived too early
 		unknownMessages.forEach(emitIfRelevant)
 		unknownMessages = []
 	.return(emitter)
+	.disposer ->
+		if serviceBrowserPath
+			Promise.fromCallback (callback) ->
+				# Free the service browser
+				bus.invoke
+					path: serviceBrowserPath
+					destination: 'org.freedesktop.Avahi'
+					interface: 'org.freedesktop.Avahi.ServiceBrowser'
+					member: 'Free'
+				, callback
 
 findAvailableServices = (bus, avahiServer, { type, protocol, subtypes }, timeout = 2000) ->
-	identifier = "_#{type}._#{protocol}"
-
-	queryServices(bus, avahiServer, identifier)
-	.then (serviceQuery) ->
+	Promise.using queryServices(bus, avahiServer, "_#{type}._#{protocol}"), (serviceQuery) ->
 		new Promise (resolve, reject) ->
-			console.log('Listening for services...')
-
-			services = []
-			serviceQuery.on NEW_SIGNAL, (message) ->
-				console.log('new item:', message)
+			serviceFqdns = new Set()
+			serviceQuery.on NEW_SIGNAL, ([ _inf, _proto, name, type, domain ]) ->
+				serviceFqdns.add("#{name}._#{type}.#{domain}")
 
 			serviceQuery.on DONE_SIGNAL, (message) ->
-				console.log('done')
-				resolve(services)
+				resolve(serviceFqdns)
 
 			serviceQuery.on FAIL_SIGNAL, (message) ->
-				console.log('error')
 				reject(new Error(message))
 
 			# If we run out of time, just return whatever we have so far
 			setTimeout ->
-				resolve(services)
+				resolve(serviceFqdns)
 			, timeout
 
 ###
