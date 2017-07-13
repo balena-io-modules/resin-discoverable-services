@@ -1,6 +1,7 @@
 EventEmitter = require('events').EventEmitter
 Promise = require('bluebird')
 dbus = require('dbus-native')
+_ = require('lodash')
 
 AVAHI_SERVICE_NAME = 'org.freedesktop.Avahi'
 
@@ -60,23 +61,41 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 					member: 'Free'
 				, callback
 
+formatAvahiService = ([ inf, protocol, name, type, domain, host, aProtocol, address, port, txt, flags ]) ->
+	service: type
+	fqdn: "#{name}.#{type}.#{domain}"
+	port: port
+	host: host
+	protocol: if type.endsWith('_tcp') then 'tcp' else 'udp'
+	subtypes: []
+	referer:
+		family: if protocol == 0 then 'IPv4' else 'IPv6'
+		address: address
+
+
 findAvailableServices = (bus, avahiServer, { type, protocol, subtypes }, timeout = 2000) ->
 	Promise.using queryServices(bus, avahiServer, "_#{type}._#{protocol}"), (serviceQuery) ->
 		new Promise (resolve, reject) ->
-			serviceFqdns = new Set()
-			serviceQuery.on NEW_SIGNAL, ([ _inf, _proto, name, type, domain ]) ->
-				serviceFqdns.add("#{name}._#{type}.#{domain}")
+			services = []
+			serviceQuery.on NEW_SIGNAL, (service) ->
+				services.push(service)
 
 			serviceQuery.on DONE_SIGNAL, (message) ->
-				resolve(serviceFqdns)
+				resolve(services)
 
 			serviceQuery.on FAIL_SIGNAL, (message) ->
 				reject(new Error(message))
 
 			# If we run out of time, just return whatever we have so far
 			setTimeout ->
-				resolve(serviceFqdns)
+				resolve(services)
 			, timeout
+	.then (services) ->
+		Promise.map services, ({ interface: inf, protocol, name, type, domain }) ->
+			Promise.fromCallback (callback) ->
+				avahiServer.ResolveService(inf, protocol, name, type, domain, PROTO_UNSPEC, 0, callback)
+			, { multiArgs: true }
+		.map(formatAvahiService)
 
 ###
 # @summary Detects whether a D-Bus Avahi connection is possible
