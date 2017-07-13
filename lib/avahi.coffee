@@ -5,11 +5,7 @@ dbus = require('dbus-native')
 # This ensures it's always closed, and doesn't stop the process ending
 getDbus = ->
 	Promise.try ->
-		# Can be replaced by dbus.systemBus() once https://github.com/sidorares/node-dbus/pull/151 is released
-		# Should be first dbus-native release > 0.2.1
-		dbus.createClient({
-			busAddress: process.env.DBUS_SYSTEM_BUS_ADDRESS || 'unix:path=/var/run/dbus/system_bus_socket'
-		})
+		dbus.systemBus()
 	.disposer (bus) ->
 		bus?.connection?.end()
 
