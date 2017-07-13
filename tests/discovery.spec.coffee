@@ -7,8 +7,7 @@ fs = Promise.promisifyAll(require('fs'))
 bonjour = require('bonjour')
 _ = require('lodash')
 
-expect = m.chai.expect
-be = m.chai.be
+{ expect } = m.chai
 
 UNIQUE_TEST_ID = Math.round(Math.random() * 10000)
 
@@ -47,7 +46,6 @@ describe 'Discoverable Services:', ->
 	after ->
 		# Clean up, destroy the test-services directory
 		rmdir(testServicePath)
-
 
 	inspectEnumeratedServices = (services) ->
 		expect(services.length).to.equal(dummyServices.length)
@@ -104,6 +102,7 @@ describe 'Discoverable Services:', ->
 			it 'should return a promise that resolves to the registered services', ->
 				discoverableServices.enumerateServices()
 				.return (inspectEnumeratedServices)
+
 	describe '.findServices()', ->
 		bonjourInstance = bonjour()
 
@@ -230,7 +229,6 @@ describe 'Discoverable Services:', ->
 					{ identifier: '_first._sub._ssh._tcp', name: unique('First SSH') , port: 1234 }
 					{ identifier: 'second_ssh', name: unique('Second SSH') , port: 2345 }
 					{ identifier: '_noweb._sub._gopher._udp', name: unique('Gopher'), port: 3456 }
-
 				]
 				.then ->
 					discoverableServices.findServices([ '_first._sub._ssh._tcp', '_noweb._sub._gopher._udp', 'second_ssh' ])
