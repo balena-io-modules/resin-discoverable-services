@@ -73,8 +73,13 @@ formatAvahiService = ([ inf, protocol, name, type, domain, host, aProtocol, addr
 		address: address
 
 
-findAvailableServices = (bus, avahiServer, { type, protocol, subtypes }, timeout = 2000) ->
-	Promise.using queryServices(bus, avahiServer, "_#{type}._#{protocol}"), (serviceQuery) ->
+findAvailableServices = (bus, avahiServer, { type, protocol, subType }, timeout = 2000) ->
+	if subType
+		fullType = "_#{subType}._sub._#{type}._#{protocol}"
+	else
+		fullType = "_#{type}._#{protocol}"
+
+	Promise.using queryServices(bus, avahiServer, fullType), (serviceQuery) ->
 		new Promise (resolve, reject) ->
 			services = []
 			serviceQuery.on NEW_SIGNAL, (service) ->
@@ -120,10 +125,8 @@ exports.isAvailable = ->
 		.return(true)
 	.catchReturn(false)
 
-exports.find = ({ type, protocol, subtypes = [] }) ->
+exports.find = ({ type, protocol, subType }) ->
 	Promise.using getDbus(), (bus) ->
 		getAvahiServer(bus)
 		.then (avahi) ->
-			findAvailableServices(bus, avahi, { type, protocol, subtypes })
-		.then (services) ->
-			console.log(services)
+			findAvailableServices(bus, avahi, { type, protocol, subType })
