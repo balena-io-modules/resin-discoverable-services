@@ -91,7 +91,7 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subtypes }, timeout
 				resolve(services)
 			, timeout
 	.then (services) ->
-		Promise.map services, ({ interface: inf, protocol, name, type, domain }) ->
+		Promise.map services, ([ inf, protocol, name, type, domain ]) ->
 			Promise.fromCallback (callback) ->
 				avahiServer.ResolveService(inf, protocol, name, type, domain, PROTO_UNSPEC, 0, callback)
 			, { multiArgs: true }
