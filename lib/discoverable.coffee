@@ -331,7 +331,6 @@ exports.publishServices = Promise.method (services, options, callback) ->
 					if service.host? then publishDetails.host = service.host
 
 					publishInstance.publish(publishDetails)
-					publishedServices = true
 	.asCallback(callback)
 
 ###

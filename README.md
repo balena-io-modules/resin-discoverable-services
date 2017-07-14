@@ -30,7 +30,7 @@ This module exports three methods:
 #### setRegistryPath(path)
 
 This informs the module where to search for valid services to register with itself. By default this is the `services` directory within it.
-Service defintions are defined as a set of nested directories, and take the form:
+Service definitions are defined as a set of nested directories, and take the form:
 
     `[<subtype>/]<type>/<protocol>`
 
