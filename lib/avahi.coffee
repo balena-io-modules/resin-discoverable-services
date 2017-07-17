@@ -61,23 +61,15 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 					member: 'Free'
 				, callback
 
-formatAvahiService = ([ inf, protocol, name, type, domain, host, aProtocol, address, port, txt, flags ]) ->
-	service: type
-	fqdn: "#{name}.#{type}.#{domain}"
-	port: port
-	host: host
-	protocol: if type.endsWith('_tcp') then 'tcp' else 'udp'
-	subtypes: []
-	referer:
-		family: if protocol == 0 then 'IPv4' else 'IPv6'
-		address: address
-
-
-findAvailableServices = (bus, avahiServer, { type, protocol, subType }, timeout = 2000) ->
-	if subType
-		fullType = "_#{subType}._sub._#{type}._#{protocol}"
+prefixSubtype = (type, subtype) ->
+	if subtype?
+		"_#{subtype}._sub.#{type}"
 	else
-		fullType = "_#{type}._#{protocol}"
+		type
+
+findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout = 1000) ->
+	fullType = "_#{type}._#{protocol}"
+	fullType = prefixSubtype(fullType, subtype)
 
 	Promise.using queryServices(bus, avahiServer, fullType), (serviceQuery) ->
 		new Promise (resolve, reject) ->
@@ -100,7 +92,21 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subType }, timeout 
 			Promise.fromCallback (callback) ->
 				avahiServer.ResolveService(inf, protocol, name, type, domain, PROTO_UNSPEC, 0, callback)
 			, { multiArgs: true }
-		.map(formatAvahiService)
+			.catchReturn(null) # Services can fail to resolve: ignore them.
+		.filter(_.identity)
+		.map (result) ->
+			formatAvahiService(subtype, result)
+
+formatAvahiService = (subtype, [ inf, protocol, name, type, domain, host, aProtocol, address, port, txt, flags ]) ->
+	service: prefixSubtype(type, subtype)
+	fqdn: "#{name}.#{type}.#{domain}"
+	port: port
+	host: host
+	protocol: if type.endsWith('_tcp') then 'tcp' else 'udp'
+	subtypes: [ subtype ].filter(_.identity)
+	referer:
+		family: if protocol == 0 then 'IPv4' else 'IPv6'
+		address: address
 
 ###
 # @summary Detects whether a D-Bus Avahi connection is possible
@@ -125,8 +131,8 @@ exports.isAvailable = ->
 		.return(true)
 	.catchReturn(false)
 
-exports.find = ({ type, protocol, subType }) ->
+exports.find = ({ type, protocol, subtype }) ->
 	Promise.using getDbus(), (bus) ->
 		getAvahiServer(bus)
 		.then (avahi) ->
-			findAvailableServices(bus, avahi, { type, protocol, subType })
+			findAvailableServices(bus, avahi, { type, protocol, subtype })
