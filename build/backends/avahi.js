@@ -168,6 +168,25 @@
     }).catchReturn(false);
   };
 
+
+  /*
+   * @summary Find publicised services on the local network using Avahi
+   * @function
+   * @public
+   *
+   * @description
+   * Talks to Avahi over the system D-Bus, to query for local services
+   * and resolve their details.
+   *
+   * @fulfil {Service[]} - An array of service details
+   * @returns {Promise}
+   *
+   * @example
+   * avahi.find({ type: 'ssh', protocol: 'tcp', subtype: 'resin-device' ).then((services) => {
+   *   services.forEach((service) => ...)
+   * })
+   */
+
   exports.find = function(arg) {
     var protocol, subtype, type;
     type = arg.type, protocol = arg.protocol, subtype = arg.subtype;
