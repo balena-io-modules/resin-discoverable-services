@@ -1,13 +1,14 @@
 m = require('mochainon')
 Promise = require('bluebird')
-discoverableServices = require('../lib/discoverable')
 mkdirp = Promise.promisify(require('mkdirp'))
 rmdir = Promise.promisify(require('rmdir'))
 fs = Promise.promisifyAll(require('fs'))
-bonjour = require('bonjour')
 _ = require('lodash')
 
 { expect } = m.chai
+
+{ publishService, unpublishAllServices } = require('./setup')
+discoverableServices = require('../lib/discoverable')
 
 UNIQUE_TEST_ID = Math.round(Math.random() * 10000)
 
@@ -17,27 +18,27 @@ describe 'Discoverable Services:', ->
 		"#{UNIQUE_TEST_ID}-#{name}"
 
 	testServicePath = "#{__dirname}/test-services"
-	dummyServices = [
+	testServices = [
 		{
 			path: "#{__dirname}/test-services/first/ssh/tcp",
 			service: '_first._sub._ssh._tcp',
-			bonjourOpts: { name: unique('First SSH'), port: 1234, type: 'ssh', subtypes: [ 'first' ], protocol: 'tcp' }
+			opts: { name: unique('First SSH'), port: 1234, type: 'ssh', subtypes: [ 'first' ], protocol: 'tcp' }
 		},
 		{
 			path: "#{__dirname}/test-services/second/ssh/tcp",
 			service: '_second._sub._ssh._tcp',
 			tags: [ 'second_ssh' ],
-			bonjourOpts: { name: unique('Second SSH'), port: 2345, type: 'ssh', subtypes: [ 'second' ], protocol: 'tcp' }
+			opts: { name: unique('Second SSH'), port: 2345, type: 'ssh', subtypes: [ 'second' ], protocol: 'tcp' }
 		},
 		{
 			path: "#{__dirname}/test-services/noweb/gopher/udp",
 			service: '_noweb._sub._gopher._udp'
-			bonjourOpts: { name: unique('Gopher'), port: 3456, type: 'gopher', subtypes: [ 'noweb' ], protocol: 'udp' }
+			opts: { name: unique('Gopher'), port: 3456, type: 'gopher', subtypes: [ 'noweb' ], protocol: 'udp' }
 		}
 	]
 
 	before ->
-		Promise.map dummyServices, (service) ->
+		Promise.map testServices, (service) ->
 			mkdirp(service.path)
 			.then ->
 				if service.tags?
@@ -48,14 +49,14 @@ describe 'Discoverable Services:', ->
 		rmdir(testServicePath)
 
 	inspectEnumeratedServices = (services) ->
-		expect(services.length).to.equal(dummyServices.length)
+		expect(services.length).to.equal(testServices.length)
 		services.forEach (service) ->
-			dummyService = _.find dummyServices, (dummy) ->
-				return if dummy.service == service.service then true else false
+			testService = _.find testServices, (test) ->
+				return if test.service == service.service then true else false
 
-			expect(service.service).to.equal(dummyService.service)
-			if dummyService.tags?
-				expect(service.tags).to.deep.equal(dummyService.tags)
+			expect(service.service).to.equal(testService.service)
+			if testService.tags?
+				expect(service.tags).to.deep.equal(testService.tags)
 
 	describe '.setRegistryPath()', ->
 
@@ -104,25 +105,20 @@ describe 'Discoverable Services:', ->
 				.return (inspectEnumeratedServices)
 
 	describe '.findServices()', ->
-		bonjourInstance = bonjour()
 
-		# Publish our dummy services up, using bonjour.
 		before ->
 			discoverableServices.setRegistryPath(testServicePath)
 
-			dummyServices.forEach (service) ->
-				bonjourInstance.publish(service.bonjourOpts)
-
-			# Publish a new service that isn't in the registry. We should not
-			# expect to see it. In this case, it's an encompassing SSH type.
-			bonjourInstance.publish
+			testServices
+			.map (service) -> service.opts
+			.concat
+				# Include a new service that isn't in the registry. We should not
+				# expect to see it. In this case, it's an encompassing SSH type.
 				name: 'Invalid SSH', port: 5678,
 				type: 'ssh', subtypes: [ 'invalid' ], protocol: 'tcp'
+			.forEach(publishService)
 
-		# Stop the dummy services.
-		after ->
-			bonjourInstance.unpublishAll()
-			bonjourInstance.destroy()
+		after(unpublishAllServices)
 
 		describe 'using invalid parameters', ->
 			it '.enumerateServices() should throw an error with an service list', ->
