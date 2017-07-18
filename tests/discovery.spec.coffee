@@ -108,6 +108,8 @@ describe 'Discoverable Services:', ->
 
 		# Publish our dummy services up, using bonjour.
 		before ->
+			discoverableServices.setRegistryPath(testServicePath)
+
 			dummyServices.forEach (service) ->
 				bonjourInstance.publish(service.bonjourOpts)
 
