@@ -16,7 +16,7 @@ gulp.task 'coffee', ->
 
 gulp.task 'test', ->
 	gulp.src(OPTIONS.files.tests, read: false)
-		.pipe(mocha({}))
+		.pipe mocha({})
 
 gulp.task 'build', [
 	'test'
