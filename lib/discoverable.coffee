@@ -21,6 +21,8 @@ ip = require('ip')
 bonjour = require('bonjour')
 _ = require('lodash')
 
+getNativeServiceBrowser = require('./backends/native')
+
 # Set the memoize cache as a Map so we can clear it should the service
 # registry change.
 _.memoize.Cache = Map
@@ -233,43 +235,17 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
-	# Perform the bonjour service lookup and return any results after the timeout period
-	findInstance = bonjour()
-	createBrowser = (serviceIdentifier, subtypes, type, protocol) ->
-		new Promise (resolve) ->
-			foundServices = []
-			browser = findInstance.find { type: type, subtypes: subtypes, protocol: protocol }, (service) ->
-				# Because we spin up a new search for each subtype, we don't
-				# need to update records here. Any valid service is unique.
-				service.service = serviceIdentifier
-				foundServices.push(service)
-
-			setTimeout( ->
-				browser.stop()
-				resolve(foundServices)
-			, timeout)
-
-	# Get the list of registered services.
-	registryServices()
-	.then (validServices) ->
-		serviceBrowsers = []
-		services.forEach (service) ->
-			if (registeredService = findValidService(service, validServices))?
-				serviceDetails = determineServiceInfo(registeredService)
-				if serviceDetails.type? and serviceDetails.protocol?
-					# Build a browser, set a timeout and resolve once that
-					# timeout has finished
-					serviceBrowsers.push(createBrowser registeredService.service,
-						serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol
-					)
-
-		Promise.all serviceBrowsers
-		.then (services) ->
-			services = _.flatten(services)
-			_.remove(services, (entry) -> entry == null)
-			return services
-	.finally ->
-		findInstance.destroy()
+	Promise.using getNativeServiceBrowser(timeout), (serviceBrowser) ->
+		# Get the list of registered services.
+		registryServices()
+		.then (validServices) ->
+			Promise.resolve(services).map (service) ->
+				if (registeredService = findValidService(service, validServices))?
+					serviceDetails = determineServiceInfo(registeredService)
+					if serviceDetails.type? and serviceDetails.protocol?
+						serviceBrowser.find(registeredService, serviceDetails)
+			.filter(_.identity)
+			.then((services) -> _.flatten(services))
 	.asCallback(callback)
 
 ###
