@@ -259,7 +259,7 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 				if serviceDetails.type? and serviceDetails.protocol?
 					# Build a browser, set a timeout and resolve once that
 					# timeout has finished
-					serviceBrowsers.push(createBrowser	registeredService.service,
+					serviceBrowsers.push(createBrowser registeredService.service,
 						serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol
 					)
 
