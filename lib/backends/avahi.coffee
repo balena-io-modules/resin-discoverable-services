@@ -36,6 +36,8 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 			emitter.emit(msg.member, msg.body)
 
 	bus.connection.on 'message', (msg) ->
+		return if msg.type != SIGNAL_MSG_TYPE
+
 		# Until we know our query's path, collect messages
 		if not serviceBrowserPath?
 			unknownMessages.push(msg)

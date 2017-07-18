@@ -52,6 +52,9 @@
       }
     };
     bus.connection.on('message', function(msg) {
+      if (msg.type !== SIGNAL_MSG_TYPE) {
+        return;
+      }
       if (serviceBrowserPath == null) {
         return unknownMessages.push(msg);
       } else {
