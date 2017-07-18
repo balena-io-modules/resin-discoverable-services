@@ -17,7 +17,7 @@ limitations under the License.
  */
 
 (function() {
-  var Promise, _, bonjour, determineServiceInfo, findValidService, fs, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
+  var Promise, _, bonjour, determineServiceInfo, findValidService, fs, getNativeServiceBrowser, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     slice = [].slice;
 
@@ -32,6 +32,8 @@ limitations under the License.
   bonjour = require('bonjour');
 
   _ = require('lodash');
+
+  getNativeServiceBrowser = require('./backends/native');
 
   _.memoize.Cache = Map;
 
@@ -265,7 +267,6 @@ limitations under the License.
    */
 
   exports.findServices = Promise.method(function(services, timeout, callback) {
-    var createBrowser, findInstance;
     if (timeout == null) {
       timeout = 2000;
     } else {
@@ -276,46 +277,20 @@ limitations under the License.
     if (!_.isArray(services)) {
       throw new Error('services parameter must be an array of service name strings');
     }
-    findInstance = bonjour();
-    createBrowser = function(serviceIdentifier, subtypes, type, protocol) {
-      return new Promise(function(resolve) {
-        var browser, foundServices;
-        foundServices = [];
-        browser = findInstance.find({
-          type: type,
-          subtypes: subtypes,
-          protocol: protocol
-        }, function(service) {
-          service.service = serviceIdentifier;
-          return foundServices.push(service);
-        });
-        return setTimeout(function() {
-          browser.stop();
-          return resolve(foundServices);
-        }, timeout);
-      });
-    };
-    return registryServices().then(function(validServices) {
-      var serviceBrowsers;
-      serviceBrowsers = [];
-      services.forEach(function(service) {
-        var registeredService, serviceDetails;
-        if ((registeredService = findValidService(service, validServices)) != null) {
-          serviceDetails = determineServiceInfo(registeredService);
-          if ((serviceDetails.type != null) && (serviceDetails.protocol != null)) {
-            return serviceBrowsers.push(createBrowser(registeredService.service, serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol));
+    return Promise.using(getNativeServiceBrowser(timeout), function(serviceBrowser) {
+      return registryServices().then(function(validServices) {
+        return Promise.resolve(services).map(function(service) {
+          var registeredService, serviceDetails;
+          if ((registeredService = findValidService(service, validServices)) != null) {
+            serviceDetails = determineServiceInfo(registeredService);
+            if ((serviceDetails.type != null) && (serviceDetails.protocol != null)) {
+              return serviceBrowser.find(registeredService, serviceDetails);
+            }
           }
-        }
-      });
-      return Promise.all(serviceBrowsers).then(function(services) {
-        services = _.flatten(services);
-        _.remove(services, function(entry) {
-          return entry === null;
+        }).filter(_.identity).then(function(services) {
+          return _.flatten(services);
         });
-        return services;
       });
-    })["finally"](function() {
-      return findInstance.destroy();
     }).asCallback(callback);
   });
 
