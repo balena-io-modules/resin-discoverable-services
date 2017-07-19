@@ -243,10 +243,11 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 				if (registeredService = findValidService(service, validServices))?
 					serviceDetails = determineServiceInfo(registeredService)
 					if serviceDetails.type? and serviceDetails.protocol?
-						serviceBrowser.find registeredService.service,
-							serviceDetails.type,
-							serviceDetails.protocol,
+						serviceBrowser.find(
+							serviceDetails.type
+							serviceDetails.protocol
 							serviceDetails.subtypes
+						)
 			.filter(_.identity)
 			.then((services) -> _.flatten(services))
 	.asCallback(callback)

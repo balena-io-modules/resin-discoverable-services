@@ -142,14 +142,12 @@ describe 'Discoverable Services:', ->
 					expect(elapsedTime).to.be.below(3000)
 
 					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
 					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.protocol).to.equal('udp')
 
 					privateSsh = _.find(services, { name: unique('Second SSH') })
-					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
 					expect(privateSsh.fqdn).to.equal(unique('Second SSH._ssh._tcp.local'))
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
@@ -164,7 +162,6 @@ describe 'Discoverable Services:', ->
 					expect(elapsedTime).to.be.below(7000)
 
 					mainSsh = _.find(services, { name: unique('First SSH') })
-					expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
 					expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
 					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
 					expect(mainSsh.port).to.equal(1234)
@@ -174,7 +171,6 @@ describe 'Discoverable Services:', ->
 					# so the subtype is empty and the service is just a vanilla
 					# 'ssh' one.
 					privateSsh = _.find(services, { name: unique('Second SSH') })
-					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
 					expect(privateSsh.fqdn).to.equal(unique('Second SSH._ssh._tcp.local'))
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
@@ -198,7 +194,6 @@ describe 'Discoverable Services:', ->
 				.then (services) ->
 					expect(services).to.have.length(1)
 					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
 					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
@@ -213,7 +208,6 @@ describe 'Discoverable Services:', ->
 				.then (services) ->
 					expect(services).to.have.length(1)
 					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
 					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
@@ -234,21 +228,18 @@ describe 'Discoverable Services:', ->
 					expect(services).to.have.length(3)
 
 					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.service).to.equal('_noweb._sub._gopher._udp')
 					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.protocol).to.equal('udp')
 
 					mainSsh = _.find(services, { name: unique('First SSH') })
-					expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
 					expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
 					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
 					expect(mainSsh.port).to.equal(1234)
 					expect(mainSsh.protocol).to.equal('tcp')
 
 					privateSsh = _.find(services, { name: unique('Second SSH') })
-					expect(privateSsh.service).to.equal('_second._sub._ssh._tcp')
 					expect(privateSsh.fqdn).to.equal(unique('Second SSH._ssh._tcp.local'))
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
@@ -269,7 +260,6 @@ describe 'Discoverable Services:', ->
 						discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
 					.then (services) ->
 						mainSsh = _.find(services, { name: unique('First SSH') })
-						expect(mainSsh.service).to.equal('_first._sub._ssh._tcp')
 						expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
 						expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
 						expect(mainSsh.port).to.equal(1234)
