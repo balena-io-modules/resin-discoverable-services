@@ -5,7 +5,7 @@ class NativeServiceBrowser
 	constructor: (@timeout) ->
 		@findInstance = bonjour()
 
-	find: (serviceName, type, protocol, subtypes = []) ->
+	find: (type, protocol, subtypes = []) ->
 		# Perform the bonjour service lookup and return any results after the timeout period
 		new Promise (resolve) =>
 			foundServices = []
@@ -14,9 +14,6 @@ class NativeServiceBrowser
 				subtypes: subtypes
 				protocol: protocol
 			, (service) ->
-				# Because we spin up a new search for each subtype, we don't
-				# need to update records here. Any valid service is unique.
-				service.service = serviceName
 				foundServices.push(service)
 
 			setTimeout( ->

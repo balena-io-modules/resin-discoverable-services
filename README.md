@@ -60,7 +60,6 @@ The timeout value is the length of time in milliseconds that the module will sea
 
 The method returns an array of services that conform to those registered. Each service information object consists of:
 
-* `String service`: The service name as passed, or to which a passed tag references, to `findServices()`.
 * `Array[String] addresses`: An array denoting either an IPv4 or IPv6 addresses where the service is located.
 * `String name`: The name of the service, eg. `My Service`.
 * `String fqdn`: The fully qualified domain name of the service, eg. `My Service._ssh._tcp.local`.
