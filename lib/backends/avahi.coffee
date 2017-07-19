@@ -1,7 +1,10 @@
 EventEmitter = require('events').EventEmitter
 Promise = require('bluebird')
-dbus = require('dbus-native')
 _ = require('lodash')
+
+try
+	# This will fail (silently) on non-Linux platforms
+	dbus = require('dbus-native')
 
 AVAHI_SERVICE_NAME = 'org.freedesktop.Avahi'
 
@@ -17,7 +20,10 @@ FAIL_SIGNAL = 'Failure'
 # This ensures it's always closed, and doesn't stop the process ending
 getDbus = ->
 	Promise.try ->
-		dbus.systemBus()
+		bus = dbus.systemBus()
+		# Stop any connection errors killing the process
+		bus.connection.on('error', ->)
+		return bus
 	.disposer (bus) ->
 		bus?.connection?.end()
 
@@ -25,6 +31,7 @@ getAvahiServer = (bus) ->
 	service = bus.getService(AVAHI_SERVICE_NAME)
 	Promise.fromCallback (callback) ->
 		service.getInterface('/', 'org.freedesktop.Avahi.Server', callback)
+	.timeout(500)
 
 queryServices = (bus, avahiServer, typeIdentifier) ->
 	serviceBrowserPath = null
@@ -128,6 +135,10 @@ formatAvahiService = (subtype, [ inf, protocol, name, type, domain, host, aProto
 # })
 ###
 exports.isAvailable = ->
+	# If we've failed to even load the module, then no, it's not available.
+	if not dbus?
+		return false
+
 	Promise.using getDbus(), (bus) ->
 		getAvahiServer(bus)
 		.return(true)
