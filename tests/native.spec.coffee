@@ -24,26 +24,24 @@ describe 'Default native discovery backend', ->
 
 		it 'can find a published service', ->
 			Promise.using getNativeBackend(1000), (nativeBackend) ->
-				nativeBackend.find('_mockservice._tcp', 'mockservice', 'tcp')
+				nativeBackend.find('mockservice', 'tcp')
 			.then (results) ->
 				expect(results.length).to.equal(2)
 				normalService = _.find(results, { port: 80 })
 
 				expect(normalService.fqdn).to.equal('Normal Service._mockservice._tcp.local')
-				expect(normalService.service).to.equal('_mockservice._tcp')
 				expect(normalService.protocol).to.equal('tcp')
 				expect(normalService.referer.family).to.equal('IPv4')
 
 		it 'can find a published service by subtype', ->
 			Promise.using getNativeBackend(1000), (nativeBackend) ->
-				nativeBackend.find('_test._sub._mockservice._tcp', 'mockservice', 'tcp', ['test'])
+				nativeBackend.find('mockservice', 'tcp', ['test'])
 			.then (results) ->
 				expect(results.length).to.equal(1)
 				testService = results[0]
 
 				expect(testService.port).to.equal(8080)
 				expect(testService.fqdn).to.equal('Special Test Service._mockservice._tcp.local')
-				expect(testService.service).to.equal('_test._sub._mockservice._tcp')
 				expect(testService.protocol).to.equal('tcp')
 				expect(testService.referer.family).to.equal('IPv4')
 				expect(testService.subtypes).to.deep.equal([ 'test' ])

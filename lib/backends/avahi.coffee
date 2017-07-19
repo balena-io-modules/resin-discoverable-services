@@ -70,15 +70,14 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 					member: 'Free'
 				, callback
 
-prefixSubtype = (type, subtype) ->
+buildFullType = (type, protocol, subtype) ->
 	if subtype?
-		"_#{subtype}._sub.#{type}"
+		"_#{subtype}._sub.#{type}.#{protocol}"
 	else
-		type
+		"#{type}.#{protocol}"
 
 findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout = 1000) ->
-	fullType = "_#{type}._#{protocol}"
-	fullType = prefixSubtype(fullType, subtype)
+	fullType = buildFullType(type, protocol, subtype)
 
 	Promise.using queryServices(bus, avahiServer, fullType), (serviceQuery) ->
 		new Promise (resolve, reject) ->
@@ -107,7 +106,6 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout 
 			formatAvahiService(subtype, result)
 
 formatAvahiService = (subtype, [ inf, protocol, name, type, domain, host, aProtocol, address, port, txt, flags ]) ->
-	service: prefixSubtype(type, subtype)
 	fqdn: "#{name}.#{type}.#{domain}"
 	port: port
 	host: host
