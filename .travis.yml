@@ -10,6 +10,13 @@ node_js:
 matrix:
   include:
   - os: osx
+  - os: linux
+    dist: trusty
+    sudo: required
+    env: ENABLE_AVAHI=true
+
+before_install:
+- 'if [ "$ENABLE_AVAHI" == "true" ]; then sudo apt-get install -y avahi-daemon; fi'
 
 notifications:
   email: false
