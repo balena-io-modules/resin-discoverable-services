@@ -53,10 +53,8 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 		else emitIfRelevant(msg)
 
 	Promise.fromCallback (callback) ->
-		console.log('building service browser...')
 		avahiServer.ServiceBrowserNew(IF_UNSPEC, PROTO_UNSPEC, typeIdentifier, 'local', 0, callback)
 	.then (path) ->
-		console.log('service browser built at', path)
 		serviceBrowserPath = path
 		# Race condition! Handle any messages that would have matched this, but arrived too early
 		unknownMessages.forEach(emitIfRelevant)
@@ -64,7 +62,6 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 	.return(emitter)
 	.disposer ->
 		if serviceBrowserPath
-			console.log('freeing service browser')
 			Promise.fromCallback (callback) ->
 				# Free the service browser
 				bus.invoke
@@ -84,24 +81,19 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout 
 	fullType = buildFullType(type, protocol, subtype)
 
 	Promise.using queryServices(bus, avahiServer, fullType), (serviceQuery) ->
-		console.log('querying')
 		new Promise (resolve, reject) ->
 			services = []
 			serviceQuery.on NEW_SIGNAL, (service) ->
-				console.log('new', service)
 				services.push(service)
 
 			serviceQuery.on DONE_SIGNAL, (message) ->
-				console.log('done', message)
 				resolve(services)
 
 			serviceQuery.on FAIL_SIGNAL, (message) ->
-				console.log('fail', message)
 				reject(new Error(message))
 
 			# If we run out of time, just return whatever we have so far
 			setTimeout ->
-				console.log('service query timeout')
 				resolve(services)
 			, timeout
 	.then (services) ->
@@ -110,7 +102,9 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout 
 			Promise.fromCallback (callback) ->
 				avahiServer.ResolveService(inf, protocol, name, type, domain, PROTO_UNSPEC, 0, callback)
 			, { multiArgs: true }
-			.catchReturn(null) # Services can fail to resolve: ignore them.
+			.catch (err) ->
+				console.warn("Failed to resolve #{type}.#{domain}", err)
+				return null # If services can fail to resolve: ignore them.
 		.filter(_.identity)
 		.map (result) ->
 			formatAvahiService(subtype, result)
