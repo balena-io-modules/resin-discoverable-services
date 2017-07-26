@@ -72,9 +72,9 @@ queryServices = (bus, avahiServer, typeIdentifier) ->
 
 buildFullType = (type, protocol, subtype) ->
 	if subtype?
-		"_#{subtype}._sub.#{type}.#{protocol}"
+		"_#{subtype}._sub._#{type}._#{protocol}"
 	else
-		"#{type}.#{protocol}"
+		"_#{type}._#{protocol}"
 
 findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout = 1000) ->
 	fullType = buildFullType(type, protocol, subtype)
