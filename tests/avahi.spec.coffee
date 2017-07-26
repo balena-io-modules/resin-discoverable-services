@@ -7,7 +7,7 @@ avahi = require('../lib/backends/avahi')
 
 { publishService, unpublishAllServices } = require('./setup')
 
-describe 'Avahi discovery backend', ->
+describe.only 'Avahi discovery backend', ->
 	this.timeout(10000)
 
 	givenAvahiIt 'says Avahi is available', ->
