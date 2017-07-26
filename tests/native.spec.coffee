@@ -26,6 +26,7 @@ describe 'Default native discovery backend', ->
 			Promise.using getNativeBackend(1000), (nativeBackend) ->
 				nativeBackend.find('mockservice', 'tcp')
 			.then (results) ->
+				console.log(JSON.stringify(results, null, 2))
 				expect(results.length).to.equal(2)
 				normalService = _.find(results, { port: 80 })
 
