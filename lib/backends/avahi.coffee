@@ -1,6 +1,7 @@
 EventEmitter = require('events').EventEmitter
 Promise = require('bluebird')
 _ = require('lodash')
+childProcess = require('child_process')
 
 try
 	# This will fail (silently) on non-Linux platforms
@@ -78,6 +79,10 @@ buildFullType = (type, protocol, subtype) ->
 		"_#{type}._#{protocol}"
 
 findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout = 1000) ->
+	avahiBrowse = childProcess.spawn('avahi-browse', ['--all', '--resolve', '--terminate'])
+	avahiBrowse.stdout.pipe(process.stdout)
+	avahiBrowse.stderr.pipe(process.stderr)
+
 	fullType = buildFullType(type, protocol, subtype)
 
 	Promise.using queryServices(bus, avahiServer, fullType), (serviceQuery) ->
@@ -96,6 +101,7 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout 
 			setTimeout ->
 				resolve(services)
 			, timeout
+	.delay(5000)
 	.then (services) ->
 		console.log('got services', services)
 		Promise.map services, ([ inf, protocol, name, type, domain ]) ->
