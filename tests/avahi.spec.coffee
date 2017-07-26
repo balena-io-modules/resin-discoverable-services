@@ -6,6 +6,10 @@ avahi = require('../lib/backends/avahi')
 
 { publishService, unpublishAllServices } = require('./setup')
 
+# Seemingly very unused/unpopular service type, unlikely to exist on your local network
+# Avahi rejects unknown types, and many other types (e.g. SSH) can be present in dev
+MOCK_SERVICE_TYPE = 'writietalkie'
+
 describe 'Avahi discovery backend', ->
 	this.timeout(10000)
 
@@ -17,16 +21,16 @@ describe 'Avahi discovery backend', ->
 		before ->
 			publishService
 				name: 'Normal Service', port: 80,
-				type: 'mockservice', subtypes: [ ], protocol: 'tcp'
+				type: MOCK_SERVICE_TYPE, subtypes: [ ], protocol: 'tcp'
 
 			publishService
 				name: 'Special Test Service', port: 8080,
-				type: 'mockservice', subtypes: [ 'test' ], protocol: 'tcp'
+				type: MOCK_SERVICE_TYPE, subtypes: [ 'test' ], protocol: 'tcp'
 
 		after(unpublishAllServices)
 
 		givenAvahiIt 'can find a published service', ->
-			avahi.find({ type: 'mockservice', protocol: 'tcp' })
+			avahi.find({ type: MOCK_SERVICE_TYPE, protocol: 'tcp' })
 			.then (results) ->
 				expect(results.length).to.equal(2)
 				normalService = _.find(results, { port: 80 })
@@ -36,7 +40,7 @@ describe 'Avahi discovery backend', ->
 				expect(normalService.referer.family).to.equal('IPv4')
 
 		givenAvahiIt 'can find a published service by subtype', ->
-			avahi.find({ type: 'mockservice', protocol: 'tcp', subtype: 'test' })
+			avahi.find({ type: MOCK_SERVICE_TYPE, protocol: 'tcp', subtype: 'test' })
 			.then (results) ->
 				expect(results.length).to.equal(1)
 				testService = results[0]
