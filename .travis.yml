@@ -13,7 +13,7 @@ matrix:
     env: ENABLE_AVAHI=true
 
 before_install:
-- 'if [ "$ENABLE_AVAHI" == "true" ]; then sudo apt-get install -y avahi-daemon; fi'
+- 'if [ "$ENABLE_AVAHI" == "true" ]; then sudo apt-get install -y avahi-daemon avahi-discover libnss-mdns; fi'
 
 notifications:
   email: false
