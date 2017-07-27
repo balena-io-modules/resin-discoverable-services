@@ -3,13 +3,10 @@ language: node_js
 
 node_js:
   - "8"
-  - "6"
-  - "4"
 
 # Here (rather than top-level 'os') means it only runs once, for latest Node
 matrix:
   include:
-  - os: osx
   - os: linux
     dist: trusty
     sudo: required
