@@ -21,6 +21,9 @@ class NativeServiceBrowser
 				resolve(foundServices)
 			, @timeout)
 
+	isAvailable: ->
+		Promise.resolve(true)
+
 	destroy: ->
 		@findInstance.destroy()
 
