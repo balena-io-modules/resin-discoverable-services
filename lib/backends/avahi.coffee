@@ -159,7 +159,7 @@ exports.isAvailable = ->
 #   services.forEach((service) => ...)
 # })
 ###
-exports.find = ({ type, protocol, subtype }) ->
+exports.find = (type, protocol, [ subtype ] = []) ->
 	Promise.using getDbus(), (bus) ->
 		getAvahiServer(bus)
 		.then (avahi) ->
