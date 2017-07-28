@@ -21,7 +21,7 @@ ip = require('ip')
 bonjour = require('bonjour')
 _ = require('lodash')
 
-getNativeServiceBrowser = require('./backends/native')
+getNativeServiceBrowser = require('./backends/native').get
 
 # Set the memoize cache as a Map so we can clear it should the service
 # registry change.

@@ -2,17 +2,17 @@ Promise = require('bluebird')
 _ = require('lodash')
 { expect } = require('mochainon').chai
 
-getNativeBackend = require('../lib/backends/native')
-getAvahiBackend = require('../lib/backends/avahi')
+nativeBackend = require('../lib/backends/native')
+avahiBackend = require('../lib/backends/avahi')
 
 { checkBackendAvailability, givenBackendIt, publishService, unpublishAllServices } = require('./setup')
 
 backends =
-	avahi: -> getAvahiBackend(1000)
-	native: -> getNativeBackend(1000)
+	avahi: avahiBackend
+	native: nativeBackend
 
 checkBackendAvailability(backends)
-_.forEach backends, (getBackend, backendName) ->
+_.forEach backends, ({ get: getBackend, isAvailable }, backendName) ->
 	it = (testName, body) ->
 		givenBackendIt(backendName, testName, body)
 
@@ -20,8 +20,7 @@ _.forEach backends, (getBackend, backendName) ->
 		this.timeout(10000)
 
 		it "says #{backendName} is available", ->
-			Promise.using getBackend(), (backend) ->
-				expect(backend.isAvailable()).to.eventually.equal(true)
+			expect(isAvailable()).to.eventually.equal(true)
 
 		describe '.find', ->
 
