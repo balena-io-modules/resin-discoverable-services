@@ -120,33 +120,6 @@ class Avahi
 	constructor: (@timeout) ->
 
 	###
-	# @summary Detects whether a D-Bus Avahi connection is possible
-	# @function
-	# @public
-	#
-	# @description
-	# If the promise returned by this method resolves to true, other Avahi methods
-	# should work. If it doesn't, they definitely will not.
-	#
-	# @fulfil {boolean} - Is an Avahi connection possible
-	# @returns {Promise}
-	#
-	# @example
-	# avahi.isAvailable().then((canUseAvahi) => {
-	#   if (canUseAvahi) { ... }
-	# })
-	###
-	isAvailable: ->
-		# If we've failed to even load the module, then no, it's not available.
-		if not dbus?
-			return false
-
-		Promise.using getDbus(), (bus) ->
-			getAvahiServer(bus)
-			.return(true)
-		.catchReturn(false)
-
-	###
 	# @summary Find publicised services on the local network using Avahi
 	# @function
 	# @public
@@ -164,10 +137,37 @@ class Avahi
 	# })
 	###
 	find: (type, protocol, [ subtype ] = []) ->
-		Promise.using getDbus(), (bus) ->
+		Promise.using getDbus(), (bus) =>
 			getAvahiServer(bus)
-			.then (avahi) ->
+			.then (avahi) =>
 				findAvailableServices(bus, avahi, { type, protocol, subtype }, @timeout)
 
-module.exports = (timeout = 1000) ->
+exports.get = (timeout = 1000) ->
 	Promise.resolve(new Avahi(timeout)).disposer(->)
+
+###
+# @summary Detects whether a D-Bus Avahi connection is possible
+# @function
+# @public
+#
+# @description
+# If the promise returned by this method resolves to true, other Avahi methods
+# should work. If it doesn't, they definitely will not.
+#
+# @fulfil {boolean} - Is an Avahi connection possible
+# @returns {Promise}
+#
+# @example
+# avahi.isAvailable().then((canUseAvahi) => {
+#   if (canUseAvahi) { ... }
+# })
+###
+exports.isAvailable = ->
+	# If we've failed to even load the module, then no, it's not available.
+	if not dbus?
+		return false
+
+	Promise.using getDbus(), (bus) ->
+		getAvahiServer(bus)
+		.return(true)
+	.catchReturn(false)

@@ -27,7 +27,10 @@ class NativeServiceBrowser
 	destroy: ->
 		@findInstance.destroy()
 
-module.exports = (timeout) ->
+exports.get = (timeout = 1000) ->
 	Promise.resolve(new NativeServiceBrowser(timeout))
 	.disposer (serviceBrowser) ->
 		serviceBrowser.destroy()
+
+exports.isAvailable = ->
+	Promise.resolve(true)

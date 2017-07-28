@@ -1,4 +1,3 @@
-Promise = require('bluebird')
 _ = require('lodash')
 bonjour = require('bonjour')
 
@@ -9,9 +8,8 @@ exports.checkBackendAvailability = (backends) ->
 	if not _.includes(Object.keys(backends), requiredBackend)
 		throw new Error('Unknown $BACKEND: ' + requiredBackend)
 
-	_.forEach backends, (getBackend, name) ->
-		Promise.using getBackend(), (backend) ->
-			backendAvailability[name] = backend.isAvailable()
+	_.forEach backends, ({ isAvailable }, name) ->
+		backendAvailability[name] = isAvailable()
 
 # Equivalent to mocha's `it`, but fails immediately if the required backend isn't available.
 exports.givenBackendIt = (backendName, testName, body) ->
