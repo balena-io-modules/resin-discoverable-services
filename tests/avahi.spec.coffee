@@ -38,6 +38,16 @@ describe 'Avahi discovery backend', ->
 				expect(normalService.protocol).to.equal('tcp')
 				expect(normalService.referer.family).to.equal('IPv4')
 
+		givenAvahiIt 'returns a result for each subtype of the matching service', ->
+			avahi.find({ type: 'mockservice', protocol: 'tcp' })
+			.then (results) ->
+				expect(results.length).to.equal(2)
+				specialService = _.find(results, { port: 8080 })
+
+				expect(specialService.fqdn).to.equal('Special Test Service._mockservice._tcp.local')
+				expect(specialService.protocol).to.equal('tcp')
+				expect(specialService.referer.family).to.equal('IPv4')
+
 		givenAvahiIt 'can find a published service by subtype', ->
 			avahi.find({ type: 'mockservice', protocol: 'tcp', subtype: 'test' })
 			.then (results) ->
