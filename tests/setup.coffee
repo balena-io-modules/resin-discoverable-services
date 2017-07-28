@@ -1,24 +1,26 @@
+Promise = require('bluebird')
+_ = require('lodash')
 bonjour = require('bonjour')
 
-avahi = require('../lib/backends/avahi')
+requiredBackend = process.env.BACKEND || 'native'
 
-backend = process.env.BACKEND || 'default'
-if backend != 'default' and backend != 'avahi'
-	throw new Error('Unknown $BACKEND: ' + backend)
+backendAvailability = {}
+exports.checkBackendAvailability = (backends) ->
+	if not _.includes(Object.keys(backends), requiredBackend)
+		throw new Error('Unknown $BACKEND: ' + requiredBackend)
 
-# Equivalent to mocha's `it`, but fails immediately if Avahi isn't available.
-# If `skipUnavailable` is truthy, just quietly skips tests instead.
-avahiAvailabilityPromise = null
-exports.givenAvahiIt = (name, body) ->
-	it name, ->
-		if not avahiAvailabilityPromise?
-			avahiAvailabilityPromise = avahi.isAvailable()
+	_.forEach backends, (getBackend, name) ->
+		Promise.using getBackend(), (backend) ->
+			backendAvailability[name] = backend.isAvailable()
 
-		avahiAvailabilityPromise.then (isAvailable) =>
+# Equivalent to mocha's `it`, but fails immediately if the required backend isn't available.
+exports.givenBackendIt = (backendName, testName, body) ->
+	it testName, ->
+		backendAvailability[backendName].then (isAvailable) =>
 			if isAvailable
 				body.apply(this)
-			else if backend == 'avahi'
-				throw new Error('Avahi tests required, but Avahi is not available')
+			else if backendName == requiredBackend
+				throw new Error("#{backendName} tests required, but that backend is not available")
 			else
 				this.skip()
 
