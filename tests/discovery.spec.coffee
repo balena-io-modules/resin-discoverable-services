@@ -133,13 +133,9 @@ describe 'Discoverable Services:', ->
 			this.timeout(10000)
 
 			it 'should return only the gopher and second ssh service using default timeout as a promise', ->
-				startTime = _.now()
 				discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'second_ssh' ])
 				.then (services) ->
 					expect(services).to.have.length(2)
-					elapsedTime = _.now() - startTime
-					expect(elapsedTime).to.be.above(2000)
-					expect(elapsedTime).to.be.below(3000)
 
 					gopher = _.find(services, { name: unique('Gopher') })
 					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
@@ -154,12 +150,8 @@ describe 'Discoverable Services:', ->
 					expect(privateSsh.protocol).to.equal('tcp')
 
 			it 'should return both first and second ssh services using default timeout via a callback', (done) ->
-				startTime = _.now()
 				discoverableServices.findServices [ '_first._sub._ssh._tcp', 'second_ssh' ], 6000, (error, services) ->
 					expect(services).to.have.length(2)
-					elapsedTime = _.now() - startTime
-					expect(elapsedTime).to.be.above(6000)
-					expect(elapsedTime).to.be.below(7000)
 
 					mainSsh = _.find(services, { name: unique('First SSH') })
 					expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
