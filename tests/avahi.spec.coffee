@@ -29,7 +29,7 @@ describe 'Avahi discovery backend', ->
 		after(unpublishAllServices)
 
 		givenAvahiIt 'can find a published service', ->
-			avahi.find({ type: 'mockservice', protocol: 'tcp' })
+			avahi.find('mockservice', 'tcp')
 			.then (results) ->
 				expect(results.length).to.equal(2)
 				normalService = _.find(results, { port: 80 })
@@ -39,7 +39,7 @@ describe 'Avahi discovery backend', ->
 				expect(normalService.referer.family).to.equal('IPv4')
 
 		givenAvahiIt 'returns a result for each subtype of the matching service', ->
-			avahi.find({ type: 'mockservice', protocol: 'tcp' })
+			avahi.find('mockservice', 'tcp')
 			.then (results) ->
 				expect(results.length).to.equal(2)
 				specialService = _.find(results, { port: 8080 })
@@ -49,7 +49,7 @@ describe 'Avahi discovery backend', ->
 				expect(specialService.referer.family).to.equal('IPv4')
 
 		givenAvahiIt 'can find a published service by subtype', ->
-			avahi.find({ type: 'mockservice', protocol: 'tcp', subtype: 'test' })
+			avahi.find('mockservice', 'tcp', ['test'])
 			.then (results) ->
 				expect(results.length).to.equal(1)
 				testService = results[0]
