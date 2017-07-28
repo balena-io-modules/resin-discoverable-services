@@ -3,12 +3,12 @@ _ = require('lodash')
 { expect } = require('mochainon').chai
 
 getNativeBackend = require('../lib/backends/native')
-avahi = require('../lib/backends/avahi')
+getAvahiBackend = require('../lib/backends/avahi')
 
 { checkBackendAvailability, givenBackendIt, publishService, unpublishAllServices } = require('./setup')
 
 backends =
-	avahi: -> Promise.resolve(avahi).disposer(->)
+	avahi: -> getAvahiBackend(1000)
 	native: -> getNativeBackend(1000)
 
 checkBackendAvailability(backends)

@@ -76,7 +76,7 @@ buildFullType = (type, protocol, subtype) ->
 	else
 		"_#{type}._#{protocol}"
 
-findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout = 1000) ->
+findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout) ->
 	fullType = buildFullType(type, protocol, subtype)
 
 	Promise.using queryServices(bus, avahiServer, fullType), (serviceQuery) ->
@@ -115,52 +115,58 @@ formatAvahiService = (subtype, [ inf, protocol, name, type, domain, host, aProto
 		family: if protocol == 0 then 'IPv4' else 'IPv6'
 		address: address
 
-###
-# @summary Detects whether a D-Bus Avahi connection is possible
-# @function
-# @public
-#
-# @description
-# If the promise returned by this method resolves to true, other Avahi methods
-# should work. If it doesn't, they definitely will not.
-#
-# @fulfil {boolean} - Is an Avahi connection possible
-# @returns {Promise}
-#
-# @example
-# avahi.isAvailable().then((canUseAvahi) => {
-#   if (canUseAvahi) { ... }
-# })
-###
-exports.isAvailable = ->
-	# If we've failed to even load the module, then no, it's not available.
-	if not dbus?
-		return false
+class Avahi
+	constructor: (@timeout) ->
 
-	Promise.using getDbus(), (bus) ->
-		getAvahiServer(bus)
-		.return(true)
-	.catchReturn(false)
+	###
+	# @summary Detects whether a D-Bus Avahi connection is possible
+	# @function
+	# @public
+	#
+	# @description
+	# If the promise returned by this method resolves to true, other Avahi methods
+	# should work. If it doesn't, they definitely will not.
+	#
+	# @fulfil {boolean} - Is an Avahi connection possible
+	# @returns {Promise}
+	#
+	# @example
+	# avahi.isAvailable().then((canUseAvahi) => {
+	#   if (canUseAvahi) { ... }
+	# })
+	###
+	isAvailable: ->
+		# If we've failed to even load the module, then no, it's not available.
+		if not dbus?
+			return false
 
-###
-# @summary Find publicised services on the local network using Avahi
-# @function
-# @public
-#
-# @description
-# Talks to Avahi over the system D-Bus, to query for local services
-# and resolve their details.
-#
-# @fulfil {Service[]} - An array of service details
-# @returns {Promise}
-#
-# @example
-# avahi.find({ type: 'ssh', protocol: 'tcp', subtype: 'resin-device' ).then((services) => {
-#   services.forEach((service) => ...)
-# })
-###
-exports.find = (type, protocol, [ subtype ] = []) ->
-	Promise.using getDbus(), (bus) ->
-		getAvahiServer(bus)
-		.then (avahi) ->
-			findAvailableServices(bus, avahi, { type, protocol, subtype })
+		Promise.using getDbus(), (bus) ->
+			getAvahiServer(bus)
+			.return(true)
+		.catchReturn(false)
+
+	###
+	# @summary Find publicised services on the local network using Avahi
+	# @function
+	# @public
+	#
+	# @description
+	# Talks to Avahi over the system D-Bus, to query for local services
+	# and resolve their details.
+	#
+	# @fulfil {Service[]} - An array of service details
+	# @returns {Promise}
+	#
+	# @example
+	# avahi.find({ type: 'ssh', protocol: 'tcp', subtype: 'resin-device' ).then((services) => {
+	#   services.forEach((service) => ...)
+	# })
+	###
+	find: (type, protocol, [ subtype ] = []) ->
+		Promise.using getDbus(), (bus) ->
+			getAvahiServer(bus)
+			.then (avahi) ->
+				findAvailableServices(bus, avahi, { type, protocol, subtype }, @timeout)
+
+module.exports = (timeout = 1000) ->
+	Promise.resolve(new Avahi(timeout)).disposer(->)
