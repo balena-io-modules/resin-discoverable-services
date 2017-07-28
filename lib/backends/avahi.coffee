@@ -106,6 +106,7 @@ findAvailableServices = (bus, avahiServer, { type, protocol, subtype }, timeout)
 			formatAvahiService(subtype, result)
 
 formatAvahiService = (subtype, [ inf, protocol, name, type, domain, host, aProtocol, address, port, txt, flags ]) ->
+	name: name
 	fqdn: "#{name}.#{type}.#{domain}"
 	port: port
 	host: host
