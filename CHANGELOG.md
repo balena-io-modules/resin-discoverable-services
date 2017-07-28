@@ -1,3 +1,8 @@
+# v2.0.0
+
+* Use Avahi for service discovery, if available
+* Remove 'service' property from results
+
 # Change Log
 
 All notable changes to this project will be documented in this file

@@ -234,18 +234,23 @@ describe 'Discoverable Services:', ->
 				# runs MDNS by default. It is assumed that every other platform (such as
 				# Linux/FreeBSD/Windows) is *not* running a Bonjour based protocol.
 				# If it is, this test will fail as it will not be able to bind to port 5354.
-				if process.platform isnt 'darwin'
-					discoverableServices.publishServices [
-						{ identifier: '_first._sub._ssh._tcp', name: 'First SSH', port: 1234 }
-					], { mdnsInterface: '127.0.0.1' }
-					.then ->
-						discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
-					.then (services) ->
-						mainSsh = _.find(services, { name: 'First SSH' })
-						expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
-						expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
-						expect(mainSsh.port).to.equal(1234)
-						expect(mainSsh.protocol).to.equal('tcp')
-						expect(mainSsh.referer.address).to.equal('127.0.0.1')
-					.finally ->
-						discoverableServices.unpublishServices()
+				if process.platform is 'darwin'
+					return
+
+				# This doesn't work with Avahi scans, as by default Avahi refuses to use the localhost interface
+				isAvahiAvailable().then (hasAvahi) ->
+					if not hasAvahi
+						discoverableServices.publishServices [
+							{ identifier: '_first._sub._ssh._tcp', name: 'First SSH', port: 1234 }
+						], { mdnsInterface: '127.0.0.1' }
+						.then ->
+							discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
+						.then (services) ->
+							mainSsh = _.find(services, { name: 'First SSH' })
+							expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
+							expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
+							expect(mainSsh.port).to.equal(1234)
+							expect(mainSsh.protocol).to.equal('tcp')
+							expect(mainSsh.referer.address).to.equal('127.0.0.1')
+						.finally ->
+							discoverableServices.unpublishServices()
