@@ -1,52 +1,31 @@
 m = require('mochainon')
-Promise = require('bluebird')
-mkdirp = Promise.promisify(require('mkdirp'))
-rmdir = Promise.promisify(require('rmdir'))
-fs = Promise.promisifyAll(require('fs'))
 _ = require('lodash')
 
 { expect } = m.chai
 
-{ publishService, unpublishAllServices } = require('./setup')
+{ testServicePath, givenServiceRegistry } = require('./setup')
+{ isAvailable: isAvahiAvailable } = require('../lib/backends/avahi')
 discoverableServices = require('../lib/discoverable')
-
-UNIQUE_TEST_ID = Math.round(Math.random() * 10000)
 
 describe 'Discoverable Services:', ->
 
-	unique = (name) ->
-		"#{UNIQUE_TEST_ID}-#{name}"
-
-	testServicePath = "#{__dirname}/test-services"
 	testServices = [
 		{
-			path: "#{__dirname}/test-services/first/ssh/tcp",
 			service: '_first._sub._ssh._tcp',
-			opts: { name: unique('First SSH'), port: 1234, type: 'ssh', subtypes: [ 'first' ], protocol: 'tcp' }
+			opts: { name: 'First SSH', port: 1234, type: 'ssh', subtypes: [ 'first' ], protocol: 'tcp' }
 		},
 		{
-			path: "#{__dirname}/test-services/second/ssh/tcp",
 			service: '_second._sub._ssh._tcp',
 			tags: [ 'second_ssh' ],
-			opts: { name: unique('Second SSH'), port: 2345, type: 'ssh', subtypes: [ 'second' ], protocol: 'tcp' }
+			opts: { name: 'Second SSH', port: 2345, type: 'ssh', subtypes: [ 'second' ], protocol: 'tcp' }
 		},
 		{
-			path: "#{__dirname}/test-services/noweb/gopher/udp",
 			service: '_noweb._sub._gopher._udp'
-			opts: { name: unique('Gopher'), port: 3456, type: 'gopher', subtypes: [ 'noweb' ], protocol: 'udp' }
+			opts: { name: 'Gopher', port: 3456, type: 'gopher', subtypes: [ 'noweb' ], protocol: 'udp' }
 		}
 	]
 
-	before ->
-		Promise.map testServices, (service) ->
-			mkdirp(service.path)
-			.then ->
-				if service.tags?
-					return fs.writeFileAsync("#{service.path}/tags.json", JSON.stringify(service.tags))
-
-	after ->
-		# Clean up, destroy the test-services directory
-		rmdir(testServicePath)
+	givenServiceRegistry(testServices)
 
 	inspectEnumeratedServices = (services) ->
 		expect(services.length).to.equal(testServices.length)
@@ -68,6 +47,9 @@ describe 'Discoverable Services:', ->
 		describe 'using the default path', ->
 			serviceName = '_resin-device._sub._ssh._tcp'
 			tagNames = [ 'resin-ssh' ]
+
+			beforeEach ->
+				discoverableServices.setRegistryPath(null)
 
 			it '.enumerateServices() should retrieve the resin-device.ssh service', (done) ->
 				discoverableServices.enumerateServices (error, services) ->
@@ -109,16 +91,20 @@ describe 'Discoverable Services:', ->
 		before ->
 			discoverableServices.setRegistryPath(testServicePath)
 
-			testServices
-			.map (service) -> service.opts
+			services = testServices.map (service) ->
+				identifier: service.service
+				port: service.opts.port
+				name: service.opts.name
 			.concat
 				# Include a new service that isn't in the registry. We should not
 				# expect to see it. In this case, it's an encompassing SSH type.
-				name: 'Invalid SSH', port: 5678,
-				type: 'ssh', subtypes: [ 'invalid' ], protocol: 'tcp'
-			.forEach(publishService)
+				identifier: '_invalid._sub._ssh._tcp'
+				port: 5678
+				name: 'Invalid SSH'
+			discoverableServices.publishServices(services)
 
-		after(unpublishAllServices)
+		after ->
+			discoverableServices.unpublishServices()
 
 		describe 'using invalid parameters', ->
 			it '.enumerateServices() should throw an error with an service list', ->
@@ -137,14 +123,14 @@ describe 'Discoverable Services:', ->
 				.then (services) ->
 					expect(services).to.have.length(2)
 
-					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
+					gopher = _.find(services, { name: 'Gopher' })
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.protocol).to.equal('udp')
 
-					privateSsh = _.find(services, { name: unique('Second SSH') })
-					expect(privateSsh.fqdn).to.equal(unique('Second SSH._ssh._tcp.local'))
+					privateSsh = _.find(services, { name: 'Second SSH' })
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
 					expect(privateSsh.protocol).to.equal('tcp')
@@ -153,8 +139,8 @@ describe 'Discoverable Services:', ->
 				discoverableServices.findServices [ '_first._sub._ssh._tcp', 'second_ssh' ], 6000, (error, services) ->
 					expect(services).to.have.length(2)
 
-					mainSsh = _.find(services, { name: unique('First SSH') })
-					expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
+					mainSsh = _.find(services, { name: 'First SSH' })
+					expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
 					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
 					expect(mainSsh.port).to.equal(1234)
 					expect(mainSsh.protocol).to.equal('tcp')
@@ -162,8 +148,8 @@ describe 'Discoverable Services:', ->
 					# We didn't explicitly search for the private SSH services
 					# so the subtype is empty and the service is just a vanilla
 					# 'ssh' one.
-					privateSsh = _.find(services, { name: unique('Second SSH') })
-					expect(privateSsh.fqdn).to.equal(unique('Second SSH._ssh._tcp.local'))
+					privateSsh = _.find(services, { name: 'Second SSH' })
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
 					expect(privateSsh.protocol).to.equal('tcp')
@@ -173,6 +159,9 @@ describe 'Discoverable Services:', ->
 	describe '.publishServices()', ->
 		this.timeout(10000)
 
+		before ->
+			discoverableServices.setRegistryPath(testServicePath)
+
 		describe 'using invalid parameters', ->
 			it '.publishServices() should throw an error with an service list', ->
 				promise = discoverableServices.publishServices('spoon')
@@ -180,13 +169,13 @@ describe 'Discoverable Services:', ->
 
 		describe 'using test services', ->
 			it 'should publish only the gopher service and find only it', ->
-				discoverableServices.publishServices([ { name: unique('Gopher'), identifier: '_noweb._sub._gopher._udp', port: 3456 } ])
+				discoverableServices.publishServices([ { name: 'Gopher', identifier: '_noweb._sub._gopher._udp', port: 3456 } ])
 				.then ->
 					discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'second_ssh' ])
 				.then (services) ->
 					expect(services).to.have.length(1)
-					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
+					gopher = _.find(services, { name: 'Gopher' })
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.protocol).to.equal('udp')
@@ -194,13 +183,13 @@ describe 'Discoverable Services:', ->
 					discoverableServices.unpublishServices()
 
 			it 'should publish only the gopher service and find only it', ->
-				discoverableServices.publishServices([ { name: unique('Gopher'), identifier: '_noweb._sub._gopher._udp', host: 'gopher.local', port: 3456 } ])
+				discoverableServices.publishServices([ { name: 'Gopher', identifier: '_noweb._sub._gopher._udp', host: 'gopher.local', port: 3456 } ])
 				.then ->
 					discoverableServices.findServices([ '_noweb._sub._gopher._udp', 'second_ssh' ])
 				.then (services) ->
 					expect(services).to.have.length(1)
-					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
+					gopher = _.find(services, { name: 'Gopher' })
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
 					expect(gopher.host).to.equal('gopher.local')
@@ -210,29 +199,30 @@ describe 'Discoverable Services:', ->
 
 			it 'should publish all services and find them', ->
 				discoverableServices.publishServices [
-					{ identifier: '_first._sub._ssh._tcp', name: unique('First SSH') , port: 1234 }
-					{ identifier: 'second_ssh', name: unique('Second SSH') , port: 2345 }
-					{ identifier: '_noweb._sub._gopher._udp', name: unique('Gopher'), port: 3456 }
+					{ identifier: '_first._sub._ssh._tcp', name: 'First SSH' , port: 1234 }
+					{ identifier: 'second_ssh', name: 'Second SSH' , port: 2345 }
+					{ identifier: '_noweb._sub._gopher._udp', name: 'Gopher', host: 'gopher.local', port: 3456 }
 				]
 				.then ->
 					discoverableServices.findServices([ '_first._sub._ssh._tcp', '_noweb._sub._gopher._udp', 'second_ssh' ])
 				.then (services) ->
 					expect(services).to.have.length(3)
 
-					gopher = _.find(services, { name: unique('Gopher') })
-					expect(gopher.fqdn).to.equal(unique('Gopher._gopher._udp.local'))
+					gopher = _.find(services, { name: 'Gopher' })
+					expect(gopher.fqdn).to.equal('Gopher._gopher._udp.local')
 					expect(gopher.subtypes).to.deep.equal([ 'noweb' ])
 					expect(gopher.port).to.equal(3456)
+					expect(gopher.host).to.equal('gopher.local')
 					expect(gopher.protocol).to.equal('udp')
 
-					mainSsh = _.find(services, { name: unique('First SSH') })
-					expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
+					mainSsh = _.find(services, { name: 'First SSH' })
+					expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
 					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
 					expect(mainSsh.port).to.equal(1234)
 					expect(mainSsh.protocol).to.equal('tcp')
 
-					privateSsh = _.find(services, { name: unique('Second SSH') })
-					expect(privateSsh.fqdn).to.equal(unique('Second SSH._ssh._tcp.local'))
+					privateSsh = _.find(services, { name: 'Second SSH' })
+					expect(privateSsh.fqdn).to.equal('Second SSH._ssh._tcp.local')
 					expect(privateSsh.subtypes).to.deep.equal([ 'second' ])
 					expect(privateSsh.port).to.equal(2345)
 					expect(privateSsh.protocol).to.equal('tcp')
@@ -246,13 +236,13 @@ describe 'Discoverable Services:', ->
 				# If it is, this test will fail as it will not be able to bind to port 5354.
 				if process.platform isnt 'darwin'
 					discoverableServices.publishServices [
-						{ identifier: '_first._sub._ssh._tcp', name: unique('First SSH'), port: 1234 }
+						{ identifier: '_first._sub._ssh._tcp', name: 'First SSH', port: 1234 }
 					], { mdnsInterface: '127.0.0.1' }
 					.then ->
 						discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
 					.then (services) ->
-						mainSsh = _.find(services, { name: unique('First SSH') })
-						expect(mainSsh.fqdn).to.equal(unique('First SSH._ssh._tcp.local'))
+						mainSsh = _.find(services, { name: 'First SSH' })
+						expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
 						expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
 						expect(mainSsh.port).to.equal(1234)
 						expect(mainSsh.protocol).to.equal('tcp')

@@ -5,7 +5,8 @@ _ = require('lodash')
 nativeBackend = require('../lib/backends/native')
 avahiBackend = require('../lib/backends/avahi')
 
-{ checkBackendAvailability, givenBackendIt, publishService, unpublishAllServices } = require('./setup')
+{ publishServices, unpublishServices, setRegistryPath } = require('../lib/discoverable')
+{ checkBackendAvailability, givenBackendIt, givenServiceRegistry, testServicePath } = require('./setup')
 
 backends =
 	avahi: avahiBackend
@@ -19,25 +20,31 @@ _.forEach backends, ({ get: getBackend, isAvailable }, backendName) ->
 	describe "#{backendName} discovery backend", ->
 		this.timeout(10000)
 
+		givenServiceRegistry [
+			{
+				service: '._mockservice._tcp',
+				opts: { name: 'Normal Service', port: 80, type: 'mockservice', subtypes: [ ], protocol: 'tcp' }
+			},
+			{
+				service: '_test._sub._mockservice._tcp',
+				opts: { name: 'Special Service', port: 8080, type: 'mockservice', subtypes: [ 'test' ], protocol: 'tcp' }
+			}
+		]
+
 		it "says #{backendName} is available", ->
 			expect(isAvailable()).to.eventually.equal(true)
 
 		describe '.find', ->
 
 			before ->
-				publishService
-					name: 'Normal Service', port: 80,
-					type: 'mockservice', subtypes: [ ], protocol: 'tcp'
-
-				publishService
-					name: 'Special Test Service', port: 8080,
-					type: 'mockservice', subtypes: [ 'test' ], protocol: 'tcp'
-
-				Promise.delay(500) # Add a little delay to make sure services are published
+				setRegistryPath(testServicePath)
+				publishServices [
+					{ name: 'Normal Service', port: 80, identifier: '_mockservice._tcp' }
+					{ name: 'Special Service', port: 8080, identifier: '_test._sub._mockservice._tcp' }
+				]
 
 			after ->
-				unpublishAllServices()
-				Promise.delay(500)
+				unpublishServices()
 
 			it 'can find a published service', ->
 				Promise.using getBackend(), (backend) ->
@@ -58,8 +65,8 @@ _.forEach backends, ({ get: getBackend, isAvailable }, backendName) ->
 					expect(results.length).to.equal(2)
 					specialService = _.find(results, { port: 8080 })
 
-					expect(specialService.name).to.equal('Special Test Service')
-					expect(specialService.fqdn).to.equal('Special Test Service._mockservice._tcp.local')
+					expect(specialService.name).to.equal('Special Service')
+					expect(specialService.fqdn).to.equal('Special Service._mockservice._tcp.local')
 					expect(specialService.protocol).to.equal('tcp')
 					expect(specialService.referer.family).to.equal('IPv4')
 
@@ -68,11 +75,11 @@ _.forEach backends, ({ get: getBackend, isAvailable }, backendName) ->
 					backend.find('mockservice', 'tcp', ['test'])
 				.then (results) ->
 					expect(results.length).to.equal(1)
-					testService = results[0]
+					specialService = results[0]
 
-					expect(testService.name).to.equal('Special Test Service')
-					expect(testService.port).to.equal(8080)
-					expect(testService.fqdn).to.equal('Special Test Service._mockservice._tcp.local')
-					expect(testService.protocol).to.equal('tcp')
-					expect(testService.referer.family).to.equal('IPv4')
-					expect(testService.subtypes).to.deep.equal([ 'test' ])
+					expect(specialService.name).to.equal('Special Service')
+					expect(specialService.port).to.equal(8080)
+					expect(specialService.fqdn).to.equal('Special Service._mockservice._tcp.local')
+					expect(specialService.protocol).to.equal('tcp')
+					expect(specialService.referer.family).to.equal('IPv4')
+					expect(specialService.subtypes).to.deep.equal([ 'test' ])

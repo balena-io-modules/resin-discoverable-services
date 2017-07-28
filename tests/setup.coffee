@@ -1,5 +1,8 @@
 _ = require('lodash')
-bonjour = require('bonjour')
+Promise = require('bluebird')
+mkdirp = Promise.promisify(require('mkdirp'))
+rmdir = Promise.promisify(require('rmdir'))
+fs = Promise.promisifyAll(require('fs'))
 
 requiredBackend = process.env.BACKEND || 'native'
 
@@ -22,13 +25,21 @@ exports.givenBackendIt = (backendName, testName, body) ->
 			else
 				this.skip()
 
-bonjourInstance = null
-exports.publishService = (service) ->
-	bonjourInstance ||= bonjour()
-	bonjourInstance.publish(service)
+exports.testServicePath = "#{__dirname}/test-services"
+exports.givenServiceRegistry = (testServices) ->
+	before ->
+		Promise.map testServices, (service) ->
+			{ subtypes: [subtype], type, protocol } = service.opts
 
-exports.unpublishAllServices = ->
-	return if not bonjourInstance?
-	bonjourInstance.unpublishAll()
-	bonjourInstance.destroy()
-	bonjourInstance = null
+			if subtype
+				path = "#{exports.testServicePath}/#{subtype}/#{type}/#{protocol}"
+			else
+				path = "#{exports.testServicePath}/#{type}/#{protocol}"
+
+			mkdirp(path)
+			.then ->
+				if service.tags?
+					return fs.writeFileAsync("#{path}/tags.json", JSON.stringify(service.tags))
+
+	after ->
+		rmdir(exports.testServicePath)
