@@ -1,3 +1,4 @@
+Promise = require('bluebird')
 _ = require('lodash')
 { expect } = require('mochainon').chai
 
@@ -22,6 +23,8 @@ describe 'Avahi discovery backend', ->
 			publishService
 				name: 'Special Test Service', port: 8080,
 				type: 'mockservice', subtypes: [ 'test' ], protocol: 'tcp'
+
+			Promise.delay(1000) # Add a little delay to make sure services are published
 
 		after(unpublishAllServices)
 

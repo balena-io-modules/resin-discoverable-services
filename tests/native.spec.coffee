@@ -20,6 +20,8 @@ describe 'Default native discovery backend', ->
 				name: 'Special Test Service', port: 8080,
 				type: 'mockservice', subtypes: [ 'test' ], protocol: 'tcp'
 
+			Promise.delay(1000) # Add a little delay to make sure services are published
+
 		after(unpublishAllServices)
 
 		it 'can find a published service', ->
