@@ -21,7 +21,11 @@ ip = require('ip')
 bonjour = require('bonjour')
 _ = require('lodash')
 
-getNativeServiceBrowser = require('./backends/native').get
+# In priority order:
+browserBackends = [
+	require('./backends/avahi')
+	require('./backends/native')
+]
 
 # Set the memoize cache as a Map so we can clear it should the service
 # registry change.
@@ -235,7 +239,7 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 	if not _.isArray(services)
 		throw new Error('services parameter must be an array of service name strings')
 
-	Promise.using getNativeServiceBrowser(timeout), (serviceBrowser) ->
+	Promise.using getServiceBrowser(timeout), (serviceBrowser) ->
 		# Get the list of registered services.
 		registryServices()
 		.then (validServices) ->
@@ -251,6 +255,14 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 			.filter(_.identity)
 			.then((services) -> _.flatten(services))
 	.asCallback(callback)
+
+getServiceBrowser = (timeout) ->
+	Promise.filter browserBackends, (backend) ->
+		backend.isAvailable()
+	.then (availableBackends) ->
+		if availableBackends.length == 0
+			throw new Error('No backends available for service discovery')
+		return availableBackends[0].get(timeout)
 
 ###
 # @summary Publishes all available services

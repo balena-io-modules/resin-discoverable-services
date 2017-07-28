@@ -12,17 +12,19 @@
       this.findInstance = bonjour();
     }
 
-    NativeServiceBrowser.prototype.find = function(registeredService, serviceDetails) {
+    NativeServiceBrowser.prototype.find = function(type, protocol, subtypes) {
+      if (subtypes == null) {
+        subtypes = [];
+      }
       return new Promise((function(_this) {
         return function(resolve) {
           var browser, foundServices;
           foundServices = [];
           browser = _this.findInstance.find({
-            type: serviceDetails.type,
-            subtypes: serviceDetails.subtypes,
-            protocol: serviceDetails.protocol
+            type: type,
+            subtypes: subtypes,
+            protocol: protocol
           }, function(service) {
-            service.service = registeredService.service;
             return foundServices.push(service);
           });
           return setTimeout(function() {
@@ -33,6 +35,10 @@
       })(this));
     };
 
+    NativeServiceBrowser.prototype.isAvailable = function() {
+      return Promise.resolve(true);
+    };
+
     NativeServiceBrowser.prototype.destroy = function() {
       return this.findInstance.destroy();
     };
@@ -41,10 +47,17 @@
 
   })();
 
-  module.exports = function(timeout) {
+  exports.get = function(timeout) {
+    if (timeout == null) {
+      timeout = 1000;
+    }
     return Promise.resolve(new NativeServiceBrowser(timeout)).disposer(function(serviceBrowser) {
       return serviceBrowser.destroy();
     });
+  };
+
+  exports.isAvailable = function() {
+    return Promise.resolve(true);
   };
 
 }).call(this);

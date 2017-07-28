@@ -17,7 +17,7 @@ limitations under the License.
  */
 
 (function() {
-  var Promise, _, bonjour, determineServiceInfo, findValidService, fs, getNativeServiceBrowser, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
+  var Promise, _, bonjour, browserBackends, determineServiceInfo, findValidService, fs, getServiceBrowser, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     slice = [].slice;
 
@@ -33,7 +33,7 @@ limitations under the License.
 
   _ = require('lodash');
 
-  getNativeServiceBrowser = require('./backends/native');
+  browserBackends = [require('./backends/avahi'), require('./backends/native')];
 
   _.memoize.Cache = Map;
 
@@ -277,14 +277,14 @@ limitations under the License.
     if (!_.isArray(services)) {
       throw new Error('services parameter must be an array of service name strings');
     }
-    return Promise.using(getNativeServiceBrowser(timeout), function(serviceBrowser) {
+    return Promise.using(getServiceBrowser(timeout), function(serviceBrowser) {
       return registryServices().then(function(validServices) {
         return Promise.resolve(services).map(function(service) {
           var registeredService, serviceDetails;
           if ((registeredService = findValidService(service, validServices)) != null) {
             serviceDetails = determineServiceInfo(registeredService);
             if ((serviceDetails.type != null) && (serviceDetails.protocol != null)) {
-              return serviceBrowser.find(registeredService, serviceDetails);
+              return serviceBrowser.find(serviceDetails.type, serviceDetails.protocol, serviceDetails.subtypes);
             }
           }
         }).filter(_.identity).then(function(services) {
@@ -293,6 +293,17 @@ limitations under the License.
       });
     }).asCallback(callback);
   });
+
+  getServiceBrowser = function(timeout) {
+    return Promise.filter(browserBackends, function(backend) {
+      return backend.isAvailable();
+    }).then(function(availableBackends) {
+      if (availableBackends.length === 0) {
+        throw new Error('No backends available for service discovery');
+      }
+      return availableBackends[0].get(timeout);
+    });
+  };
 
 
   /*
