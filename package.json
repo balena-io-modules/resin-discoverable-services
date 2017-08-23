@@ -21,7 +21,8 @@
     "build": "gulp build",
     "lint": "resin-lint lib tests gulpfile.coffee",
     "test": "npm run lint && gulp test",
-    "prepublish": "npm test && npm run build"
+    "prepublish": "require-npm4-to-publish",
+    "prepublishOnly": "npm test && npm run build"
   },
   "author": "Heds Simons <heds@resin.io>",
   "license": "Apache-2.0",
@@ -35,8 +36,9 @@
     "gulp-util": "^3.0.1",
     "mkdirp": "^0.5.1",
     "mocha": "^3.0.0",
-    "mockery": "^1.7.0",
     "mochainon": "^1.0.0",
+    "mockery": "^1.7.0",
+    "require-npm4-to-publish": "^1.0.0",
     "resin-lint": "^1.4.0",
     "rmdir": "^1.2.0"
   },
