@@ -9,19 +9,14 @@ OPTIONS =
 		app: 'lib/**/*.coffee'
 		tests: 'tests/**/*.spec.coffee'
 
-gulp.task 'coffee', ->
+gulp.task 'build', ->
 	gulp.src(OPTIONS.files.app)
 		.pipe(coffee(header: true)).on('error', gutil.log)
 		.pipe(gulp.dest('build/'))
 
-gulp.task 'test', ->
+gulp.task 'test', ['build'], ->
 	gulp.src(OPTIONS.files.tests, read: false)
 		.pipe(mocha({}))
 
-gulp.task 'build', [
-	'test'
-	'coffee'
-]
-
-gulp.task 'watch', [ 'build' ], ->
-	gulp.watch(OPTIONS.files.coffee, [ 'build' ])
+gulp.task 'watch', ['test'], ->
+	gulp.watch(OPTIONS.files.coffee, ['test'])

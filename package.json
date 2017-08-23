@@ -22,7 +22,7 @@
     "lint": "resin-lint lib tests gulpfile.coffee",
     "test": "npm run lint && gulp test",
     "prepublish": "require-npm4-to-publish",
-    "prepublishOnly": "npm test && npm run build"
+    "prepublishOnly": "npm test"
   },
   "author": "Heds Simons <heds@resin.io>",
   "license": "Apache-2.0",
