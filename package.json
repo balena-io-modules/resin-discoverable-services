@@ -18,9 +18,10 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "gulp build",
-    "lint": "resin-lint lib tests gulpfile.coffee",
-    "test": "npm run lint && gulp test",
+    "build": "rm -rf build/ && coffee -o build/ -c lib/",
+    "lint": "resin-lint lib tests",
+    "mocha": "mocha --compilers coffee:coffee-script/register tests/**/*.spec.coffee",
+    "test": "npm run build && npm run lint && npm run mocha",
     "prepublish": "require-npm4-to-publish",
     "prepublishOnly": "npm test"
   },
@@ -30,12 +31,8 @@
     "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
     "coffee-script": "~1.11.0",
-    "gulp": "^3.8.10",
-    "gulp-coffee": "^2.2.0",
-    "gulp-mocha": "^3.0.0",
-    "gulp-util": "^3.0.1",
     "mkdirp": "^0.5.1",
-    "mocha": "^3.0.0",
+    "mocha": "^3.5.0",
     "mochainon": "^1.0.0",
     "mockery": "^1.7.0",
     "require-npm4-to-publish": "^1.0.0",
