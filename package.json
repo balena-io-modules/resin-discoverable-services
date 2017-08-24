@@ -19,7 +19,8 @@
   },
   "scripts": {
     "install": "npm run build",
-    "build": "rm -rf build/ && node-gyp rebuild && coffee -o build/ -c lib/",
+    "build": "rm -rf build/ && npm run build:native && coffee -o build/ -c lib/",
+    "build:native": "node-gyp rebuild || true",
     "lint": "resin-lint lib tests",
     "mocha": "mocha --compilers coffee:coffee-script/register tests/**/*.spec.coffee",
     "test": "npm run build && npm run lint && npm run mocha",
