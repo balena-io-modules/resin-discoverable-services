@@ -1,15 +1,22 @@
-
 language: node_js
-
-node_js:
-  - "8"
-  - "6"
-  - "4"
-
-# Here (rather than top-level 'os') means it only runs once, for latest Node
 matrix:
   include:
-  - os: osx
-
+  - node_js: '8'
+    os: osx
+  - node_js: '8'
+    env:
+    - CAN_DEPLOY=true
+  - node_js: '6'
+  - node_js: '4'
 notifications:
   email: false
+deploy:
+  provider: npm
+  email: accounts@resin.io
+  api_key:
+    secure: cPCOcqgCXRAah3g//4DPLo1g16bqiASk8uIOM2d4tAOpj81ngOFEyOPLGwYi1gE3GVUsoHjIft63QFYfG7B8EjcRFfGCtgSzrSNhsun3gCq987nTM6SrKuMGRFrBXmwMzTGkXUdzpcg4KR8YOW4pKvaohsXjoUIXb5hY5wGQKRgzMKpkYyhBD2HHNuKHeBl4s6uwe6q09ab2oKYYD7LWSt8ieJGyfY97rpxjiOQifXoRZARhtMwUWoP0dgp84v9Lo6ZYWbwGAnhJIgZZmRYJQ2vaFJ9gRa9dODWd19HSvAnBqoVErcMQ1EQJNA7IuX7nzbyUF8o2Ux/h2luXyqPuqarDshD7Z8YOqG3jbXjZ0Dma0LpzJ1vA616GAhXd6+iNVs4eJSu9p/qlXUIVrkWa8cco7+DMNavO6/q/cclyRijVO4n5UfG/GIkfySJVQcw9Er24NWNnY0hmhxTjdYO1QeIatf1ctU/2AWhA00jQgofw8ngARnrKfeaZnnJZSsjNf83QOzyS1HnL9tQEgcX2gWyvreaapmPli8jGiHuktkSSl5+3l4+zDA0conzhAq13BcEvQLlfMU5hfJSQvQArV+GmzBIzk7w5UlLE0ttdmxt9iq7V+JzR0HfcIs48YK0AUyGI9vxuYvKnAeAQv0qwCi3a7bwz7d8ofR+4DJ1obeQ=
+  skip_cleanup: true
+  on:
+    tags: true
+    condition: "$CAN_DEPLOY = 'true' && $TRAVIS_TAG =~ ^v?[[:digit:]]+\\.[[:digit:]]+\\.[[:digit:]]+"
+    repo: resin-io-modules/resin-discoverable-services
