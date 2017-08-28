@@ -1,3 +1,8 @@
+# v2.0.1
+
+* Autodeploy tagged releases
+* Stop prepublishing on install (now only on publish)
+
 # Change Log
 
 All notable changes to this project will be documented in this file
@@ -6,9 +11,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v2.0.0 - 2017-07-31
 
-* Add automated testing for OSX and new Node versions, and stop testing on Node < 4. [Tim Perry]
-* Use Avahi for service discovery, if available. [Tim Perry]
-* Remove 'service' property from results. [Tim Perry]
+* Add automated testing for OSX and new Node versions, and stop testing on Node < 4. #34 [Tim Perry]
+* Use Avahi for service discovery, if available. #34 [Tim Perry]
+* Remove 'service' property from results. #34 [Tim Perry]
 
 ## v1.2.2 - 2017-03-08
 
