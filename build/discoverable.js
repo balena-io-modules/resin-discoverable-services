@@ -267,6 +267,7 @@ limitations under the License.
    */
 
   exports.findServices = Promise.method(function(services, timeout, callback) {
+    var createBrowser, findInstances, nics;
     if (timeout == null) {
       timeout = 2000;
     } else {
@@ -277,19 +278,64 @@ limitations under the License.
     if (!_.isArray(services)) {
       throw new Error('services parameter must be an array of service name strings');
     }
-    return Promise.using(getServiceBrowser(timeout), function(serviceBrowser) {
-      return registryServices().then(function(validServices) {
-        return Promise.resolve(services).map(function(service) {
-          var registeredService, serviceDetails;
-          if ((registeredService = findValidService(service, validServices)) != null) {
-            serviceDetails = determineServiceInfo(registeredService);
-            if ((serviceDetails.type != null) && (serviceDetails.protocol != null)) {
-              return serviceBrowser.find(serviceDetails.type, serviceDetails.protocol, serviceDetails.subtypes);
-            }
-          }
-        }).filter(_.identity).then(function(services) {
-          return _.flatten(services);
+    nics = os.networkInterfaces();
+    findInstances = [];
+    _.each(nics, function(nic) {
+      return _.each(nic, function(addr) {
+        if ((addr.family === 'IPv4') && (addr.internal === false)) {
+          return findInstances.push(bonjour({
+            "interface": addr.address
+          }));
+        }
+      });
+    });
+    createBrowser = function(serviceIdentifier, subtypes, type, protocol) {
+      return new Promise(function(resolve) {
+        var browsers, foundServices;
+        foundServices = [];
+        browsers = [];
+        _.each(findInstances, function(findInstance) {
+          return browsers.push(findInstance.find({
+            type: type,
+            subtypes: subtypes,
+            protocol: protocol
+          }, function(service) {
+            service.service = serviceIdentifier;
+            return foundServices.push(service);
+          }));
         });
+        return setTimeout(function() {
+          _.each(browsers, function(browser) {
+            return browser.stop();
+          });
+          return resolve(_.uniqBy(foundServices, function(service) {
+            return service.fqdn;
+          }));
+        }, timeout);
+      });
+    };
+    return registryServices().then(function(validServices) {
+      var serviceBrowsers;
+      serviceBrowsers = [];
+      services.forEach(function(service) {
+        var registeredService, serviceDetails;
+        if ((registeredService = findValidService(service, validServices)) != null) {
+          serviceDetails = determineServiceInfo(registeredService);
+          if ((serviceDetails.type != null) && (serviceDetails.protocol != null)) {
+            return serviceBrowsers.push(createBrowser(registeredService.service, serviceDetails.subtypes, serviceDetails.type, serviceDetails.protocol));
+          }
+        }
+      });
+      return Promise.all(serviceBrowsers).then(function(services) {
+        services = _.flatten(services);
+        _.remove(services, function(entry) {
+          return entry === null;
+        });
+        return services;
+      });
+    })["finally"](function() {
+      return _.each(findInstances, function(instance) {
+        return instance.destroy();
       });
     }).asCallback(callback);
   });

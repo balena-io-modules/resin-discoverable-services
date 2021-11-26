@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "bluebird": "^3.0.0",
-    "bonjour": "git+https://github.com/resin-io/bonjour.git",
+    "bonjour": "git+https://github.com/resin-io/bonjour#fixed-mdns",
     "ip": "^1.1.4",
     "lodash": "^4.17.4"
   },
