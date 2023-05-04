@@ -1,13 +1,13 @@
 {
   "name": "resin-discoverable-services",
   "version": "2.0.3",
-  "description": "Resin.io local service discovery utilities",
+  "description": "Balena local service discovery utilities",
   "main": "build/discoverable.js",
-  "homepage": "https://github.com/resin-io-modules/resin-discoverable-services",
+  "homepage": "https://github.com/balena-io-modules/resin-discoverable-services",
   "types": "./lib/declarations.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/resin-io-modules/resin-discoverable-services.git"
+    "url": "git+https://github.com/balena-io-modules/resin-discoverable-services.git"
   },
   "keywords": [
     "resin",
@@ -21,9 +21,7 @@
     "build": "rm -rf build/ && coffee -o build/ -c lib/",
     "lint": "resin-lint lib tests",
     "mocha": "mocha --compilers coffee:coffee-script/register tests/**/*.spec.coffee",
-    "test": "npm run build && npm run lint && npm run mocha",
-    "prepublish": "require-npm4-to-publish",
-    "prepublishOnly": "npm test"
+    "test": "npm run build && npm run lint && npm run mocha"
   },
   "author": "Heds Simons <heds@resin.io>",
   "license": "Apache-2.0",
@@ -35,13 +33,12 @@
     "mocha": "^3.5.0",
     "mochainon": "^1.0.0",
     "mockery": "^1.7.0",
-    "require-npm4-to-publish": "^1.0.0",
     "resin-lint": "^1.4.0",
     "rmdir": "^1.2.0"
   },
   "dependencies": {
     "bluebird": "^3.0.0",
-    "bonjour": "git+https://github.com/resin-io/bonjour#fixed-mdns",
+    "bonjour": "git+https://github.com/balena-io-modules/bonjour#fixed-mdns",
     "ip": "^1.1.4",
     "lodash": "^4.17.4"
   },
