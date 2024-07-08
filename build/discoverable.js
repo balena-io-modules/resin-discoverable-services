@@ -17,7 +17,7 @@ limitations under the License.
  */
 
 (function() {
-  var Promise, _, bonjour, browserBackends, determineServiceInfo, findValidService, fs, getServiceBrowser, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
+  var Promise, _, bonjour, determineServiceInfo, findValidService, fs, hasValidInterfaces, ip, isLoopbackInterface, os, publishInstance, registryPath, registryServices, retrieveServices,
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     slice = [].slice;
 
@@ -32,8 +32,6 @@ limitations under the License.
   bonjour = require('bonjour');
 
   _ = require('lodash');
-
-  browserBackends = [require('./backends/avahi'), require('./backends/native')];
 
   _.memoize.Cache = Map;
 
@@ -339,17 +337,6 @@ limitations under the License.
       });
     }).asCallback(callback);
   });
-
-  getServiceBrowser = function(timeout) {
-    return Promise.filter(browserBackends, function(backend) {
-      return backend.isAvailable();
-    }).then(function(availableBackends) {
-      if (availableBackends.length === 0) {
-        throw new Error('No backends available for service discovery');
-      }
-      return availableBackends[0].get(timeout);
-    });
-  };
 
 
   /*

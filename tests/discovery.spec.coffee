@@ -4,7 +4,6 @@ _ = require('lodash')
 { expect } = m.chai
 
 { testServicePath, givenServiceRegistry } = require('./setup')
-{ isAvailable: isAvahiAvailable } = require('../lib/backends/avahi')
 discoverableServices = require('../lib/discoverable')
 
 describe 'Discoverable Services:', ->
@@ -237,20 +236,17 @@ describe 'Discoverable Services:', ->
 				if process.platform is 'darwin'
 					return
 
-				# This doesn't work with Avahi scans, as by default Avahi refuses to use the localhost interface
-				isAvahiAvailable().then (hasAvahi) ->
-					if not hasAvahi
-						discoverableServices.publishServices [
-							{ identifier: '_first._sub._ssh._tcp', name: 'First SSH', port: 1234 }
-						], { mdnsInterface: '127.0.0.1' }
-						.then ->
-							discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
-						.then (services) ->
-							mainSsh = _.find(services, { name: 'First SSH' })
-							expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
-							expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
-							expect(mainSsh.port).to.equal(1234)
-							expect(mainSsh.protocol).to.equal('tcp')
-							expect(mainSsh.referer.address).to.equal('127.0.0.1')
-						.finally ->
-							discoverableServices.unpublishServices()
+				discoverableServices.publishServices [
+					{ identifier: '_first._sub._ssh._tcp', name: 'First SSH', port: 1234 }
+				], { mdnsInterface: '127.0.0.1' }
+				.then ->
+					discoverableServices.findServices([ '_first._sub._ssh._tcp' ])
+				.then (services) ->
+					mainSsh = _.find(services, { name: 'First SSH' })
+					expect(mainSsh.fqdn).to.equal('First SSH._ssh._tcp.local')
+					expect(mainSsh.subtypes).to.deep.equal([ 'first' ])
+					expect(mainSsh.port).to.equal(1234)
+					expect(mainSsh.protocol).to.equal('tcp')
+					expect(mainSsh.referer.address).to.equal('127.0.0.1')
+				.finally ->
+					discoverableServices.unpublishServices()
