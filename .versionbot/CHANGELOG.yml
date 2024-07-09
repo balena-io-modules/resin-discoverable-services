@@ -1,4 +1,15 @@
 - commits:
+    - subject: Removes dead code
+      hash: 597388eb64d3c628328029f8cc19029bb34223df
+      body: ""
+      footer:
+        Change-type: patch
+        change-type: patch
+      author: Otavio Jacobi
+  version: 2.0.5
+  title: ""
+  date: 2024-07-09T14:34:00.337Z
+- commits:
     - subject: Update dependencies still pointing to resin-io
       hash: 06c27c0a7114341680c7558ed8ad5424201dc5f1
       body: |
@@ -31,7 +42,8 @@
       body: >-
         * Filters responses so there are no duplicates.
 
-        * Uses modified `bonjour`->`multicast-dns` branches (experimental) to perform multi-nic listen.
+        * Uses modified `bonjour`->`multicast-dns` branches (experimental) to
+        perform multi-nic listen.
 - version: 2.0.2
 - date: 2021-11-23T14:10:53Z
 - commits:
@@ -369,7 +381,8 @@
         1) Ensures that the memoized method is always used for service
         retrieval.
 
-        2) Ensures that a promise is actually honoured so that enumerating services doesn't return before it should.
+        2) Ensures that a promise is actually honoured so that enumerating
+        services doesn't return before it should.
 
         Connects to #7.
 - commits:
