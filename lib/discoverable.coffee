@@ -21,12 +21,6 @@ ip = require('ip')
 bonjour = require('bonjour')
 _ = require('lodash')
 
-# In priority order:
-browserBackends = [
-	require('./backends/avahi')
-	require('./backends/native')
-]
-
 # Set the memoize cache as a Map so we can clear it should the service
 # registry change.
 _.memoize.Cache = Map
@@ -289,13 +283,6 @@ exports.findServices = Promise.method (services, timeout, callback) ->
 			instance.destroy()
 	.asCallback(callback)
 
-getServiceBrowser = (timeout) ->
-	Promise.filter browserBackends, (backend) ->
-		backend.isAvailable()
-	.then (availableBackends) ->
-		if availableBackends.length == 0
-			throw new Error('No backends available for service discovery')
-		return availableBackends[0].get(timeout)
 
 ###
 # @summary Publishes all available services
